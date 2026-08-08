@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ÍCARO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --white: #ffffff;
+    --white-dim: rgba(255,255,255,0.65);
+    --white-faint: rgba(255,255,255,0.14);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    overflow: hidden;
+    font-family: 'Inter', -apple-system, sans-serif;
+  }
+
+  body { position: relative; }
+
+  #bg-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* ---------- palco geral ---------- */
+  #stage {
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+
+  /* ---------- tela de boas-vindas ---------- */
+  #welcome-stage {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    transition: opacity 0.8s ease;
+    opacity: 1;
+  }
+
+  #welcome-stage.fade-out { opacity: 0; }
+
+  #welcome {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500;
+    font-size: clamp(40px, 8vw, 84px);
+    color: var(--white);
+    letter-spacing: -0.01em;
+    white-space: pre-wrap;
+    min-height: 1.2em;
+  }
+
+  #welcome .typed {
+    color: var(--white);
+    text-shadow: 0 0 26px rgba(255, 255, 255, 0.45);
+  }
+
+  #cursor {
+    display: inline-block;
+    margin-left: 4px;
+    color: var(--white);
+    opacity: 1;
+    animation: blink 1s steps(1) infinite;
+  }
+
+  @keyframes blink {
+    0%, 45% { opacity: 1; }
+    50%, 100% { opacity: 0; }
+  }
+
+  /* ---------- tela de login ---------- */
+  #login-stage {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.9s ease;
+  }
+
+  #login-stage.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .login-wrap {
+    position: relative;
+    width: 100%;
+    max-width: 380px;
+  }
+
+  .neon-mount {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .login-card {
+    position: relative;
+    z-index: 2;
+    padding: 44px 36px 36px;
+    border-radius: 20px;
+    background: #0c0c10;
+    text-align: center;
+  }
+
+  .login-title {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500;
+    font-size: 30px;
+    color: var(--white);
+    margin: 0 0 30px;
+    letter-spacing: -0.01em;
+  }
+
+  .field {
+    text-align: left;
+    margin-bottom: 20px;
+  }
+
+  .field label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--white-dim);
+    margin-bottom: 8px;
+  }
+
+  .field input {
+    width: 100%;
+    padding: 13px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--white-faint);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--white);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+
+  .field input::placeholder { color: rgba(255,255,255,0.28); }
+
+  .field input:focus {
+    border-color: rgba(255,255,255,0.55);
+    background: rgba(255, 255, 255, 0.07);
+  }
+
+  .login-btn {
+    width: 100%;
+    margin-top: 10px;
+    padding: 14px;
+    border-radius: 10px;
+    border: none;
+    background: var(--white);
+    color: #0a0a0e;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: opacity 0.2s ease, transform 0.1s ease;
+  }
+
+  .login-btn:hover { opacity: 0.88; }
+  .login-btn:active { transform: scale(0.98); }
+
+  .field input.invalid {
+    border-color: #ff5c5c;
+    background: rgba(255, 92, 92, 0.06);
+  }
+
+  .login-error {
+    display: none;
+    margin-top: 16px;
+    font-size: 12.5px;
+    letter-spacing: 0.3px;
+    color: #ff6b6b;
+  }
+
+  .login-error.show { display: block; }
+
+  /* ---------- tela de resultado (text reveal wall) ---------- */
+  #result-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
+    overflow: hidden;
+  }
+
+  #result-screen.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  #result-wall {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 4px;
+    padding: 0 4vw;
+  }
+
+  #result-wall .wall-line {
+    white-space: pre;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    line-height: 1;
+    width: 100%;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #cursor { animation: none; opacity: 1; }
+  }
+</style>
+</head>
+<body>
+
+  <canvas id="bg-canvas"></canvas>
+
+  <div id="stage">
+
+    <div id="welcome-stage">
+      <div id="welcome"><span class="typed" id="typedText"></span><span id="cursor">_</span></div>
+    </div>
+
+    <div id="login-stage">
+      <div class="login-wrap" id="loginWrap">
+        <div class="neon-mount" id="neonMount"></div>
+        <div class="login-card">
+          <h1 class="login-title">Entrar</h1>
+          <form id="loginForm" autocomplete="off">
+            <div class="field">
+              <label for="user">Usuário</label>
+              <input type="text" id="user" name="user" placeholder="Digite seu usuário" required>
+            </div>
+            <div class="field">
+              <label for="pass">Senha</label>
+              <input type="password" id="pass" name="pass" placeholder="Digite sua senha" required>
+            </div>
+            <button type="submit" class="login-btn">Entrar</button>
+            <p class="login-error" id="loginError">Usuário ou senha inválidos.</p>
+          </form>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="result-screen">
+    <div id="result-wall"></div>
+  </div>
+
+<script>
+  // ============================================================
+  // FUNDO — porta em vanilla JS do componente RisingLines (Originkit)
+  // Recolorido para branco.
+  // ============================================================
+  (function () {
+    const canvas = document.getElementById('bg-canvas');
+    const ctx = canvas.getContext('2d');
+
+    const cParticle = [255, 255, 255];
+    const cHorizon = [255, 255, 255];
+
+    const CONFIG = {
+      particles: 260,
+      riseSpeed: 0.18,
+      opacity: 0.7,
+      horizonOpacity: 0.4,
+      scale: 3.2,
+      showHorizon: true,
+    };
+
+    let w = 0, h = 0, dpr = 1;
+
+    function makeRng(seed) {
+      let s = seed >>> 0;
+      return function () {
+        s = (s + 0x6d2b79f5) >>> 0;
+        let t = s;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      };
+    }
+    const rng = makeRng(0xc0ffee);
+
+    let particleCount = 0;
+    let pX, pY, pVY, pHeight;
+    let blobCount = 0;
+    let bX, bY, bVY, bR;
+
+    const worldScale = CONFIG.scale / 3.5;
+
+    function sampleCenterX(width) {
+      const r = (rng() + rng() + rng()) / 3;
+      return r * width;
+    }
+
+    function sampleSparkHeight() {
+      let tall;
+      if (rng() < 0.12) {
+        tall = 70 + rng() * 30;
+      } else {
+        tall = 20 + Math.pow(rng(), 0.7) * 35;
+      }
+      return Math.max(1, Math.floor(tall * worldScale));
+    }
+
+    function getHorizonY(height) { return height - 1; }
+
+    function initParticles() {
+      const area = w * h;
+      const refArea = 800 * 400;
+      const target = Math.max(0, Math.floor((CONFIG.particles * area) / refArea));
+      particleCount = Math.min(target, 4000);
+      pX = new Float32Array(particleCount);
+      pY = new Float32Array(particleCount);
+      pVY = new Float32Array(particleCount);
+      pHeight = new Float32Array(particleCount);
+
+      const horizonY = getHorizonY(h);
+      for (let i = 0; i < particleCount; i++) {
+        pX[i] = sampleCenterX(w);
+        pY[i] = horizonY - rng() * horizonY * 0.95;
+        pVY[i] = 10 + rng() * 40;
+        pHeight[i] = sampleSparkHeight();
+      }
+
+      const blobTarget = Math.max(0, Math.floor(target * 0.3));
+      blobCount = Math.min(blobTarget, 1200);
+      bX = new Float32Array(blobCount);
+      bY = new Float32Array(blobCount);
+      bVY = new Float32Array(blobCount);
+      bR = new Float32Array(blobCount);
+
+      for (let i = 0; i < blobCount; i++) {
+        bX[i] = sampleCenterX(w);
+        bY[i] = horizonY - rng() * horizonY * 0.95;
+        bVY[i] = 8 + rng() * 28;
+        bR[i] = (1.5 + Math.pow(rng(), 1.8) * 3.5) * worldScale;
+      }
+    }
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      w = Math.max(1, window.innerWidth);
+      h = Math.max(1, window.innerHeight);
+      canvas.width = Math.floor(w * dpr);
+      canvas.height = Math.floor(h * dpr);
+      canvas.style.width = w + 'px';
+      canvas.style.height = h + 'px';
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      initParticles();
+    }
+
+    resize();
+    window.addEventListener('resize', resize);
+
+    function drawFrame(dtRaw) {
+      const dt = Math.max(0.001, Math.min(0.05, dtRaw));
+      const horizonY = getHorizonY(h);
+
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = 'rgb(0,0,0)';
+      ctx.fillRect(0, 0, w, h);
+
+      ctx.globalCompositeOperation = 'lighter';
+
+      const horizonAlpha = Math.max(0, Math.min(1, CONFIG.horizonOpacity));
+      if (CONFIG.showHorizon && horizonAlpha > 0.001) {
+        const rx = w * 0.5;
+        const ry = 40 * worldScale;
+        ctx.save();
+        ctx.translate(w / 2, horizonY);
+        ctx.scale(rx / ry, 1);
+        const hGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, ry);
+        hGrad.addColorStop(0, `rgba(${cHorizon[0]},${cHorizon[1]},${cHorizon[2]},${horizonAlpha})`);
+        hGrad.addColorStop(0.35, `rgba(${cHorizon[0]},${cHorizon[1]},${cHorizon[2]},${horizonAlpha * 0.65})`);
+        hGrad.addColorStop(0.7, `rgba(${cHorizon[0]},${cHorizon[1]},${cHorizon[2]},${horizonAlpha * 0.2})`);
+        hGrad.addColorStop(1, `rgba(${cHorizon[0]},${cHorizon[1]},${cHorizon[2]},0)`);
+        ctx.fillStyle = hGrad;
+        ctx.fillRect(-ry - 2, -ry - 2, (ry + 2) * 2, (ry + 2) * 2);
+        ctx.restore();
+      }
+
+      const riseSpeedMul = Math.max(0, CONFIG.riseSpeed) * 10;
+      const denom = Math.max(1, horizonY);
+
+      for (let i = 0; i < blobCount; i++) {
+        const effVy = bVY[i] * (1.0 + riseSpeedMul);
+        bY[i] -= effVy * dt;
+        if (bY[i] < -bR[i] * 2) {
+          bX[i] = sampleCenterX(w);
+          bY[i] = horizonY - rng() * 10;
+          bVY[i] = 8 + rng() * 28;
+          bR[i] = (1.5 + Math.pow(rng(), 1.8) * 3.5) * worldScale;
+        }
+        const t = Math.max(0, Math.min(1, (horizonY - bY[i]) / denom));
+        const fade = t < 0.2 ? t / 0.2 : Math.max(0, 1 - (t - 0.2) / 0.8);
+        const a = fade * CONFIG.opacity;
+        if (a < 0.01) continue;
+
+        const cx = bX[i], cy = bY[i], r = bR[i];
+        const aClamped = Math.min(1, a);
+        const bGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+        bGrad.addColorStop(0, `rgba(${cParticle[0]},${cParticle[1]},${cParticle[2]},${aClamped})`);
+        bGrad.addColorStop(0.4, `rgba(${cParticle[0]},${cParticle[1]},${cParticle[2]},${aClamped * 0.45})`);
+        bGrad.addColorStop(1, `rgba(${cParticle[0]},${cParticle[1]},${cParticle[2]},0)`);
+        ctx.fillStyle = bGrad;
+        ctx.fillRect(cx - r, cy - r, r * 2, r * 2);
+        if (r > 2.5) {
+          ctx.fillStyle = `rgba(255,255,255,${aClamped})`;
+          ctx.fillRect(Math.floor(cx), Math.floor(cy), 1, 1);
+        }
+      }
+
+      for (let i = 0; i < particleCount; i++) {
+        const effVy = pVY[i] * (1.0 + riseSpeedMul);
+        pY[i] -= effVy * dt;
+        if (pY[i] < -pHeight[i]) {
+          pX[i] = sampleCenterX(w);
+          pY[i] = horizonY - rng() * 10;
+          pVY[i] = 10 + rng() * 40;
+          pHeight[i] = sampleSparkHeight();
+        }
+        const t = Math.max(0, Math.min(1, (horizonY - pY[i]) / denom));
+        const fade = t < 0.2 ? t / 0.2 : Math.max(0, 1 - (t - 0.2) / 0.8);
+        const a = fade * CONFIG.opacity;
+        if (a < 0.01) continue;
+
+        const px = Math.floor(pX[i]);
+        const py = Math.floor(pY[i]);
+        const lineHeight = pHeight[i];
+        const aClamped = Math.min(1, a);
+        const sGrad = ctx.createLinearGradient(0, py, 0, py + lineHeight);
+        sGrad.addColorStop(0, `rgba(${cParticle[0]},${cParticle[1]},${cParticle[2]},0)`);
+        sGrad.addColorStop(0.7, `rgba(${cParticle[0]},${cParticle[1]},${cParticle[2]},${aClamped})`);
+        sGrad.addColorStop(1, `rgba(${cParticle[0]},${cParticle[1]},${cParticle[2]},${aClamped})`);
+        ctx.fillStyle = sGrad;
+        ctx.fillRect(px, py, 1, lineHeight);
+      }
+    }
+
+    const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    if (reduceMotion) {
+      for (let i = 0; i < 60; i++) drawFrame(1 / 60);
+    } else {
+      let lastT = performance.now();
+      function loop(t) {
+        const deltaSec = (t - lastT) / 1000;
+        lastT = t;
+        drawFrame(deltaSec);
+        requestAnimationFrame(loop);
+      }
+      requestAnimationFrame(loop);
+    }
+  })();
+
+  // ============================================================
+  // NEON BORDER — porta em vanilla JS/CSS do componente Originkit.
+  // Dois arcos (conic-gradient) percorrem o perímetro do cartão de
+  // login em loop contínuo, com camadas de glow em blend aditivo.
+  // Recolorido para branco.
+  // ============================================================
+  (function () {
+    const OPTS = {
+      color: '#ffffff',
+      radius: 20,      // px — casa com border-radius do .login-card
+      thickness: 2,     // px
+      borderSize: 45,   // % do perímetro coberto pelo arco
+      glow: 70,         // 0-100
+      speed: 10,        // 1-20, quanto maior mais rápido
+    };
+
+    const GLOW_LAYERS = [
+      { blur: 8, opacity: 0.5, reach: 0.3 },
+      { blur: 15, opacity: 0.3, reach: 0.6 },
+      { blur: 40, opacity: 0.16, reach: 1 },
+    ];
+    const MAX_GLOW_REACH = 30;
+    const EDGE_COPIES = 2;
+    const ARC_SAMPLES = 24;
+    const MIN_ARC = 0.015;
+    const SLOWEST_CYCLE = 30, FASTEST_CYCLE = 4;
+    const GLIDE_EASE = [0.65, 0, 0.35, 1];
+
+    function withAlpha(hex, alpha) {
+      const a = Math.max(0, Math.min(1, alpha));
+      const h = hex.replace('#', '');
+      const n = parseInt(h, 16);
+      return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+    }
+
+    function perimeterPoint(u, w, h) {
+      const d = (((u % 1) + 1) % 1) * 2 * (w + h);
+      if (d < w) return [d, 0];
+      if (d < w + h) return [w, d - w];
+      if (d < w * 2 + h) return [w - (d - w - h), h];
+      return [0, h - (d - w * 2 - h)];
+    }
+
+    function cornerLap(k, w, h) {
+      const p = 2 * (w + h);
+      const at = [0, w / p, (w + h) / p, (w * 2 + h) / p];
+      return Math.floor(k / 4) + at[((k % 4) + 4) % 4];
+    }
+
+    function perimeterAngle(u, w, h) {
+      const [x, y] = perimeterPoint(u, w, h);
+      return (Math.atan2(x - w / 2, h / 2 - y) * 180) / Math.PI;
+    }
+
+    function buildArc(lap, lengthPct, w, h, color) {
+      const fw = w > 0 ? w : 100;
+      const fh = h > 0 ? h : 100;
+      const len = Math.max(0, Math.min(100, lengthPct));
+      const span = Math.max(MIN_ARC, (len / 100) * 0.5);
+      const solidT = len / 100;
+
+      const stops = [];
+      let base = 0, prev = 0, acc = 0;
+
+      for (let i = 0; i <= ARC_SAMPLES; i++) {
+        const f = i / ARC_SAMPLES;
+        const angle = perimeterAngle(lap + (f - 0.5) * span, fw, fh);
+        if (i === 0) { base = angle; }
+        else {
+          let d = angle - prev;
+          while (d > 180) d -= 360;
+          while (d < -180) d += 360;
+          acc += d;
+        }
+        prev = angle;
+
+        const t = Math.abs(f - 0.5) * 2;
+        const k = solidT >= 1 ? 1 : t <= solidT ? 1 : 1 - (t - solidT) / (1 - solidT);
+        stops.push(`${withAlpha(color, k * k * (3 - 2 * k))} ${acc.toFixed(2)}deg`);
+      }
+      const end = acc.toFixed(2);
+      stops.push(`${withAlpha(color, 0)} ${end}deg`);
+      stops.push(`${withAlpha(color, 0)} 360deg`);
+
+      return `conic-gradient(from ${base.toFixed(2)}deg at 50% 50%, ${stops.join(', ')})`;
+    }
+
+    function makeEaseFn(pts) {
+      const [x1, y1, x2, y2] = pts;
+      const bez = (a, b, t) => { const u = 1 - t; return 3*u*u*t*a + 3*u*t*t*b + t*t*t; };
+      return (t) => {
+        const x = Math.max(0, Math.min(1, t));
+        let s = x;
+        for (let i = 0; i < 8; i++) {
+          const cx = bez(x1, x2, s) - x;
+          const u = 1 - s;
+          const dx = 3*u*u*x1 + 6*u*s*(x2-x1) + 3*s*s*(1-x2);
+          if (Math.abs(dx) < 1e-6) break;
+          s -= cx / dx;
+          s = Math.max(0, Math.min(1, s));
+        }
+        return bez(y1, y2, s);
+      };
+    }
+    const glideEase = makeEaseFn(GLIDE_EASE);
+
+    function applyMask(el) {
+      el.style.webkitMaskImage = 'linear-gradient(#fff 0 0), linear-gradient(#fff 0 0)';
+      el.style.webkitMaskClip = 'content-box, border-box';
+      el.style.webkitMaskComposite = 'xor';
+      el.style.maskImage = 'linear-gradient(#fff 0 0), linear-gradient(#fff 0 0)';
+      el.style.maskClip = 'content-box, border-box';
+      el.style.maskComposite = 'exclude';
+    }
+
+    function band(r, offset, radius) {
+      const d = document.createElement('div');
+      d.style.position = 'absolute';
+      const inset = offset - r;
+      d.style.inset = inset + 'px';
+      d.style.boxSizing = 'border-box';
+      d.style.padding = r + 'px';
+      d.style.borderRadius = radius > 0 ? (radius + r) + 'px' : '0';
+      d.style.background = 'var(--arc)';
+      applyMask(d);
+      return d;
+    }
+
+    function glowLayer(r, blurPx, opacity, glowOuter, radius) {
+      const d = document.createElement('div');
+      d.style.position = 'absolute';
+      d.style.inset = (-glowOuter) + 'px';
+      d.style.boxSizing = 'border-box';
+      d.style.padding = glowOuter + 'px';
+      d.style.borderRadius = radius > 0 ? (radius + glowOuter) + 'px' : '0';
+      d.style.opacity = opacity;
+      d.style.mixBlendMode = 'plus-lighter';
+      d.style.filter = blurPx ? `blur(${blurPx}px)` : 'none';
+      applyMask(d);
+      d.appendChild(band(r, glowOuter, radius));
+      return d;
+    }
+
+    function glowGroup(startLap, opts, size) {
+      const { radius, thickness, borderSize, glow, color } = opts;
+      const amount = Math.max(0, Math.min(100, glow)) / 100;
+      const ringAt = (share) => thickness + amount * MAX_GLOW_REACH * share;
+      const glowOuter = 10 + MAX_GLOW_REACH * 2;
+
+      const root = document.createElement('div');
+      root.style.position = 'absolute';
+      root.style.inset = '0';
+      root.style.overflow = 'visible';
+      root.style.pointerEvents = 'none';
+      root.style.setProperty('--arc', buildArc(startLap, borderSize, size.w, size.h, color));
+
+      if (amount > 0) {
+        GLOW_LAYERS.forEach((l) => {
+          root.appendChild(glowLayer(ringAt(l.reach), l.blur, l.opacity, glowOuter, radius));
+        });
+      }
+      for (let i = 0; i < EDGE_COPIES; i++) {
+        const edge = document.createElement('div');
+        edge.style.position = 'absolute';
+        edge.style.inset = '0';
+        edge.style.mixBlendMode = 'plus-lighter';
+        edge.appendChild(band(thickness, 0, radius));
+        root.appendChild(edge);
+      }
+      return root;
+    }
+
+    function initNeonBorder(mountEl, opts) {
+      const size = { w: 0, h: 0 };
+      const groupA = glowGroup(0, opts, size);
+      const groupB = glowGroup(0.5, opts, size);
+      mountEl.appendChild(groupA);
+      mountEl.appendChild(groupB);
+
+      function measure() {
+        const r = mountEl.getBoundingClientRect();
+        size.w = r.width;
+        size.h = r.height;
+      }
+      measure();
+      window.addEventListener('resize', measure);
+      const parent = mountEl.parentElement;
+      if (parent && typeof ResizeObserver !== 'undefined') {
+        new ResizeObserver(measure).observe(parent);
+      }
+
+      let lap = 0, corner = 0, stepT = 0, last = performance.now();
+
+      const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduceMotion) return;
+
+      function frame(now) {
+        const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+        last = now;
+        const s = Math.max(0, Math.min(20, opts.speed));
+        if (s > 0) {
+          const beat = (SLOWEST_CYCLE + ((FASTEST_CYCLE - SLOWEST_CYCLE) * (s - 1)) / 19) / 4;
+          stepT += dt / beat;
+          while (stepT >= 1) { stepT -= 1; corner += 1; }
+          const eased = glideEase(stepT);
+
+          const fw = size.w > 0 ? size.w : 100;
+          const fh = size.h > 0 ? size.h : 100;
+          const from = cornerLap(corner, fw, fh);
+          const to = cornerLap(corner + 1, fw, fh);
+          lap = from + (to - from) * eased;
+
+          groupA.style.setProperty('--arc', buildArc(lap, opts.borderSize, fw, fh, opts.color));
+          groupB.style.setProperty('--arc', buildArc(lap + 0.5, opts.borderSize, fw, fh, opts.color));
+        }
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+
+    initNeonBorder(document.getElementById('neonMount'), OPTS);
+  })();
+
+  // ============================================================
+  // Máquina de escrever + transição para o formulário de login
+  // ============================================================
+  (function () {
+    const text = "Bem-vindo";
+    const typeDelayMs = 90;
+    const holdBeforeLoginMs = 1600;
+
+    const typedEl = document.getElementById('typedText');
+    const welcomeStage = document.getElementById('welcome-stage');
+    const loginStage = document.getElementById('login-stage');
+
+    let i = 0;
+    function typeNext() {
+      if (i < text.length) {
+        typedEl.textContent += text[i];
+        i++;
+        setTimeout(typeNext, typeDelayMs);
+      } else {
+        setTimeout(showLogin, holdBeforeLoginMs);
+      }
+    }
+
+    function showLogin() {
+      welcomeStage.classList.add('fade-out');
+      loginStage.classList.add('show');
+    }
+
+    typeNext();
+  })();
+
+  // ============================================================
+  // TEXT REVEAL WALL — porta em vanilla JS do componente Originkit.
+  // Várias linhas de caracteres aleatórios "embaralham" e se
+  // assentam (viram espaço em branco), revelando a palavra-alvo
+  // repetida pela tela, que fica destacada em cor sólida.
+  // ============================================================
+  (function () {
+    const ALL_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    const wallEl = document.getElementById('result-wall');
+    const screenEl = document.getElementById('result-screen');
+
+    function randomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    function easeInOut(t) {
+      return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    }
+
+    let activeLines = [];
+    let animId = null;
+
+    function clearWall() {
+      if (animId) cancelAnimationFrame(animId);
+      animId = null;
+      activeLines = [];
+      wallEl.innerHTML = '';
+    }
+
+    // Constrói o conteúdo de uma linha para um dado par de progressos.
+    function buildLineHTML(totalChars, wordStart, wordEnd, word, revealProgress, settleProgress, wordColor, bgColor) {
+      const numChars = Math.floor(revealProgress * totalChars);
+      const settledChars = Math.floor(settleProgress * totalChars);
+      let html = '';
+      let i = 0;
+      while (i < totalChars) {
+        const inWord = i >= wordStart && i < wordEnd;
+        if (inWord) {
+          if (i < numChars) {
+            // monta a palavra inteira de uma vez ao alcançar seu início
+            let text = '';
+            let j = i;
+            while (j < wordEnd && j < numChars) { text += word[j - wordStart]; j++; }
+            html += `<span style="color:${wordColor};font-weight:600">${text}</span>`;
+            i = j;
+          } else {
+            html += '<span>\u00a0</span>';
+            i++;
+          }
+          continue;
+        }
+        if (i >= numChars) {
+          html += '<span>\u00a0</span>';
+        } else if (i < settledChars) {
+          html += '<span>\u00a0</span>';
+        } else {
+          const ch = ALL_CHARS[randomInt(0, ALL_CHARS.length - 1)];
+          html += `<span style="color:${bgColor}">${ch}</span>`;
+        }
+        i++;
+      }
+      return html;
+    }
+
+    /**
+     * Mostra a parede de texto revelando `word` repetidas vezes.
+     * onDone é chamado quando a animação de entrada termina.
+     */
+    function showWall(word, color, onDone) {
+      clearWall();
+      screenEl.classList.add('show');
+
+      const fontSize = Math.max(14, Math.min(28, Math.floor(window.innerWidth / 40)));
+      const bgColor = 'rgba(255,255,255,0.22)';
+      const charWidth = fontSize * 0.62; // aproximação para monospace
+      const totalChars = Math.max(20, Math.floor((window.innerWidth * 0.92) / charWidth));
+      const lineHeight = fontSize + 4;
+      const numLines = Math.max(8, Math.floor(window.innerHeight / lineHeight));
+
+      const marginLines = Math.floor(numLines * 0.18);
+      const startLine = marginLines;
+      const endLine = numLines - marginLines;
+
+      const duration = 0.7;   // segundos
+      const stagger = 0.045;  // segundos entre linhas
+      const phaseOffset = duration * 0.5;
+
+      for (let li = 0; li < numLines; li++) {
+        const lineEl = document.createElement('div');
+        lineEl.className = 'wall-line';
+        lineEl.style.fontSize = fontSize + 'px';
+        wallEl.appendChild(lineEl);
+
+        let hasWord = li >= startLine && li < endLine && word.length < totalChars;
+        let wordStart = 0, wordEnd = 0;
+        if (hasWord) {
+          wordStart = randomInt(0, totalChars - word.length);
+          wordEnd = wordStart + word.length;
+        }
+
+        activeLines.push({
+          el: lineEl,
+          delay: (li - startLine >= 0 ? li - startLine : li) * stagger,
+          totalChars, wordStart, wordEnd, hasWord, word,
+          revealProgress: 0, settleProgress: 0,
+        });
+      }
+
+      const t0 = performance.now();
+      const lastLineDelay = (numLines - 1) * stagger;
+      const totalTimeMs = (lastLineDelay + phaseOffset + duration) * 1000;
+      let finished = false;
+
+      function frame(now) {
+        const elapsed = (now - t0) / 1000;
+        activeLines.forEach((line) => {
+          const revealT = Math.max(0, Math.min(1, (elapsed - line.delay) / duration));
+          const settleT = Math.max(0, Math.min(1, (elapsed - line.delay - phaseOffset) / duration));
+          line.revealProgress = easeInOut(revealT);
+          line.settleProgress = easeInOut(settleT);
+          line.el.innerHTML = buildLineHTML(
+            line.totalChars, line.wordStart, line.wordEnd, line.word,
+            line.revealProgress, line.settleProgress, color, bgColor
+          );
+        });
+
+        if (!finished && (now - t0) >= totalTimeMs) {
+          finished = true;
+          if (onDone) onDone();
+        }
+        animId = requestAnimationFrame(frame);
+      }
+      animId = requestAnimationFrame(frame);
+    }
+
+    function hideWall(onDone) {
+      screenEl.classList.remove('show');
+      setTimeout(() => {
+        clearWall();
+        if (onDone) onDone();
+      }, 500);
+    }
+
+    window.__icaroWall = { showWall, hideWall };
+  })();
+
+  // ============================================================
+  // Validação de login (mock) — usuário "123" / senha "abc"
+  // ============================================================
+  (function () {
+    const form = document.getElementById('loginForm');
+    const userInput = document.getElementById('user');
+    const passInput = document.getElementById('pass');
+    const errorMsg = document.getElementById('loginError');
+    const loginStage = document.getElementById('login-stage');
+
+    const VALID_USER = '123';
+    const VALID_PASS = 'abc';
+
+    function setInvalidState(isInvalid) {
+      userInput.classList.toggle('invalid', isInvalid);
+      passInput.classList.toggle('invalid', isInvalid);
+      errorMsg.classList.toggle('show', isInvalid);
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      setInvalidState(false);
+
+      const isValid = userInput.value.trim() === VALID_USER && passInput.value === VALID_PASS;
+
+      // Esconde o formulário e mostra a parede de texto revelando
+      // o resultado.
+      loginStage.classList.remove('show');
+
+      if (isValid) {
+        window.__icaroWall.showWall('ACESSO GARANTIDO', '#4ade80', function () {
+          // TODO: redirecionar para a próxima página do ÍCARO daqui
+          // (por enquanto o fluxo termina nesta tela de sucesso).
+        });
+      } else {
+        window.__icaroWall.showWall('INVÁLIDO', '#ff5c5c', function () {
+          setTimeout(function () {
+            window.__icaroWall.hideWall(function () {
+              loginStage.classList.add('show');
+              passInput.value = '';
+              setInvalidState(true);
+              userInput.focus();
+            });
+          }, 1200);
+        });
+      }
+    });
+  })();
+</script>
+
+</body>
+</html>

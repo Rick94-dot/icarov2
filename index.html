@@ -895,35 +895,72 @@
   })();
 
   // ============================================================
-  // Validação de login (mock) — usuário "123" / senha "abc"
+  // Validação de login — chama o backend (Node/Express + MongoDB)
+  // hospedado no Render.
   // ============================================================
   (function () {
+    // TODO: troque pela URL real do seu serviço no Render, ex:
+    // 'https://icaro-backend.onrender.com'
+    const API_BASE_URL = 'https://icarov2backend.onrender.com';
+
     const form = document.getElementById('loginForm');
     const userInput = document.getElementById('user');
     const passInput = document.getElementById('pass');
     const errorMsg = document.getElementById('loginError');
     const loginStage = document.getElementById('login-stage');
+    const submitBtn = form.querySelector('.login-btn');
+    const submitBtnDefaultText = submitBtn.textContent;
 
-    const VALID_USER = '123';
-    const VALID_PASS = 'abc';
-
-    function setInvalidState(isInvalid) {
+    function setInvalidState(isInvalid, message) {
       userInput.classList.toggle('invalid', isInvalid);
       passInput.classList.toggle('invalid', isInvalid);
+      if (message) errorMsg.textContent = message;
       errorMsg.classList.toggle('show', isInvalid);
     }
 
-    form.addEventListener('submit', function (e) {
+    async function attemptLogin(username, password) {
+      const res = await fetch(API_BASE_URL + '/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json().catch(function () { return {}; });
+      if (!res.ok) {
+        return { ok: false, error: data.error || 'Usuário ou senha inválidos.' };
+      }
+      return { ok: true, token: data.token, user: data.user };
+    }
+
+    form.addEventListener('submit', async function (e) {
       e.preventDefault();
       setInvalidState(false);
 
-      const isValid = userInput.value.trim() === VALID_USER && passInput.value === VALID_PASS;
+      const username = userInput.value.trim();
+      const password = passInput.value;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Verificando...';
+
+      let result;
+      try {
+        result = await attemptLogin(username, password);
+      } catch (err) {
+        console.error('[ÍCARO] erro ao conectar no backend:', err);
+        result = { ok: false, error: 'Não foi possível conectar ao servidor. Tente novamente.' };
+      }
+
+      submitBtn.disabled = false;
+      submitBtn.textContent = submitBtnDefaultText;
 
       // Esconde o formulário e mostra a parede de texto revelando
       // o resultado.
       loginStage.classList.remove('show');
 
-      if (isValid) {
+      if (result.ok) {
+        // Guarda o token pra usar nas próximas telas/rotas protegidas.
+        localStorage.setItem('icaro_token', result.token);
+        localStorage.setItem('icaro_user', JSON.stringify(result.user || {}));
+
         window.__icaroWall.showWall('ACESSO GARANTIDO', '#4ade80', function () {
           setTimeout(function () {
             window.location.href = 'globo.html';
@@ -935,7 +972,7 @@
             window.__icaroWall.hideWall(function () {
               loginStage.classList.add('show');
               passInput.value = '';
-              setInvalidState(true);
+              setInvalidState(true, result.error);
               userInput.focus();
             });
           }, 1200);

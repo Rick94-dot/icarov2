@@ -1089,6 +1089,7 @@ void main() {
     const input = document.getElementById('cnpjInput');
     const errorMsg = document.getElementById('cnpjError');
     const btn = document.getElementById('cnpjBtn');
+    const API_BASE_URL = 'https://icarov2backend.onrender.com';
 
     input.addEventListener('input', function () {
       const digits = onlyDigits(input.value);
@@ -1114,11 +1115,34 @@ void main() {
       }
     });
 
-    btn.addEventListener('click', function () {
+    btn.addEventListener('click', async function () {
       if (btn.disabled) return;
       const digits = onlyDigits(input.value);
-      // TODO: enviar o CNPJ validado para o próximo passo do ÍCARO
-      console.log('CNPJ válido, pronto para buscar:', digits);
+      const formatted = formatCNPJ(digits);
+      const token = localStorage.getItem('icaro_token');
+
+      const defaultText = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Buscando...';
+
+      try {
+        await fetch(API_BASE_URL + '/api/activity/search', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + token,
+          },
+          body: JSON.stringify({ cnpj: formatted }),
+        });
+        // TODO: aqui entra a busca de verdade do CNPJ quando o
+        // próximo passo do ÍCARO for definido — por enquanto só
+        // registramos a busca (visível na aba Utilização do admin).
+      } catch (err) {
+        console.error('[ÍCARO] erro ao registrar busca:', err);
+      } finally {
+        btn.textContent = defaultText;
+        btn.disabled = false;
+      }
     });
   })();
 

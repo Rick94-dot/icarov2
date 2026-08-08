@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ÍCARO — Administração</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --white: #ffffff;
+    --white-dim: rgba(255,255,255,0.65);
+    --white-faint: rgba(255,255,255,0.14);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    min-height: 100%;
+    background: #03010a;
+    font-family: 'Inter', -apple-system, sans-serif;
+  }
+
+  body { position: relative; overflow-x: hidden; }
+
+  #bg-canvas {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    z-index: 0;
+  }
+
+  /* ---------- tela de login do admin ---------- */
+  #admin-login-stage {
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    transition: opacity 0.6s ease;
+  }
+
+  #admin-login-stage.hide {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .admin-login-card {
+    width: 100%;
+    max-width: 380px;
+    padding: 44px 36px 36px;
+    border-radius: 20px;
+    background: rgba(10, 10, 14, 0.72);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+  }
+
+  .admin-login-title {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500;
+    font-size: 28px;
+    color: var(--white);
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+
+  .admin-login-subtitle {
+    font-size: 12px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--white-dim);
+    margin: 0 0 30px;
+  }
+
+  .field { text-align: left; margin-bottom: 20px; }
+
+  .field label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--white-dim);
+    margin-bottom: 8px;
+  }
+
+  .field input, .field select {
+    width: 100%;
+    padding: 13px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--white-faint);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--white);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+
+  .field input::placeholder { color: rgba(255,255,255,0.28); }
+  .field input:focus, .field select:focus {
+    border-color: rgba(255,255,255,0.55);
+    background: rgba(255, 255, 255, 0.08);
+  }
+  .field input.invalid { border-color: #ff5c5c; background: rgba(255, 92, 92, 0.08); }
+
+  .btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 10px;
+    border: none;
+    background: var(--white);
+    color: #0a0a0e;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: opacity 0.2s ease, transform 0.1s ease;
+  }
+  .btn:hover:not(:disabled) { opacity: 0.88; }
+  .btn:active:not(:disabled) { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--white);
+    border: 1px solid var(--white-faint);
+  }
+
+  .admin-error {
+    display: none;
+    margin-top: 16px;
+    font-size: 12.5px;
+    color: #ff6b6b;
+  }
+  .admin-error.show { display: block; }
+
+  /* ---------- painel ---------- */
+  #admin-panel {
+    position: relative;
+    z-index: 2;
+    min-height: 100vh;
+    padding: 48px 24px 80px;
+    opacity: 0;
+    transition: opacity 0.7s ease;
+  }
+
+  #admin-panel.show { opacity: 1; }
+
+  .panel-wrap {
+    max-width: 880px;
+    margin: 0 auto;
+  }
+
+  .panel-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 36px;
+    flex-wrap: wrap;
+  }
+
+  .panel-title {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500;
+    font-size: 38px;
+    color: var(--white);
+    margin: 0;
+    letter-spacing: -0.01em;
+    text-shadow: 0 0 30px rgba(0,0,0,0.6);
+  }
+
+  .panel-subtitle {
+    font-size: 13px;
+    color: var(--white-dim);
+    margin-top: 4px;
+  }
+
+  .logout-btn {
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: 1px solid var(--white-faint);
+    background: rgba(255,255,255,0.04);
+    color: var(--white);
+    font-size: 13px;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .logout-btn:hover { background: rgba(255,255,255,0.1); }
+
+  .card {
+    background: rgba(10, 10, 14, 0.72);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 18px;
+    padding: 28px;
+    margin-bottom: 28px;
+  }
+
+  .card-title {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 20px;
+    color: var(--white);
+    margin: 0 0 20px;
+    font-weight: 500;
+  }
+
+  .create-form {
+    display: grid;
+    grid-template-columns: 1.2fr 1.2fr 0.8fr auto;
+    gap: 14px;
+    align-items: end;
+  }
+
+  @media (max-width: 720px) {
+    .create-form { grid-template-columns: 1fr; }
+  }
+
+  .create-form .field { margin-bottom: 0; }
+  .create-form .btn { white-space: nowrap; }
+
+  .create-error {
+    display: none;
+    margin-top: 14px;
+    font-size: 12.5px;
+    color: #ff6b6b;
+  }
+  .create-error.show { display: block; }
+  .create-success {
+    display: none;
+    margin-top: 14px;
+    font-size: 12.5px;
+    color: #4ade80;
+  }
+  .create-success.show { display: block; }
+
+  /* ---------- lista de usuários ---------- */
+  .users-empty {
+    color: var(--white-dim);
+    font-size: 13.5px;
+    padding: 20px 4px;
+  }
+
+  .user-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    flex-wrap: wrap;
+  }
+  .user-row:last-child { border-bottom: none; }
+
+  .user-main {
+    flex: 1 1 200px;
+    min-width: 0;
+  }
+
+  .user-name {
+    color: var(--white);
+    font-size: 15px;
+    font-weight: 500;
+    word-break: break-word;
+  }
+
+  .user-meta {
+    color: var(--white-dim);
+    font-size: 11.5px;
+    letter-spacing: 0.3px;
+    margin-top: 3px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .badge-role-admin { background: rgba(232, 169, 75, 0.18); color: #e8a94b; }
+  .badge-role-user { background: rgba(255,255,255,0.08); color: var(--white-dim); }
+  .badge-active { background: rgba(74, 222, 128, 0.15); color: #4ade80; }
+  .badge-inactive { background: rgba(255, 92, 92, 0.15); color: #ff6b6b; }
+
+  .user-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .action-btn {
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--white-faint);
+    background: rgba(255,255,255,0.03);
+    color: var(--white);
+    font-size: 12px;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    white-space: nowrap;
+  }
+  .action-btn:hover { background: rgba(255,255,255,0.1); }
+
+  .action-btn.danger {
+    border-color: rgba(255, 92, 92, 0.35);
+    color: #ff8080;
+  }
+  .action-btn.danger:hover { background: rgba(255, 92, 92, 0.12); }
+
+  .panel-loading, .panel-error {
+    color: var(--white-dim);
+    font-size: 13.5px;
+    padding: 10px 4px;
+  }
+  .panel-error { color: #ff6b6b; }
+</style>
+</head>
+<body>
+
+  <canvas id="bg-canvas"></canvas>
+
+  <!-- ---------- login restrito a administrador ---------- -->
+  <div id="admin-login-stage">
+    <div class="admin-login-card">
+      <h1 class="admin-login-title">Administração</h1>
+      <p class="admin-login-subtitle">Acesso restrito</p>
+      <form id="adminLoginForm" autocomplete="off">
+        <div class="field">
+          <label for="adminUser">Usuário</label>
+          <input type="text" id="adminUser" placeholder="Usuário admin" required>
+        </div>
+        <div class="field">
+          <label for="adminPass">Senha</label>
+          <input type="password" id="adminPass" placeholder="Senha" required>
+        </div>
+        <button type="submit" class="btn">Entrar</button>
+        <p class="admin-error" id="adminLoginError">Usuário ou senha inválidos.</p>
+      </form>
+    </div>
+  </div>
+
+  <!-- ---------- painel ---------- -->
+  <div id="admin-panel">
+    <div class="panel-wrap">
+      <div class="panel-header">
+        <div>
+          <h1 class="panel-title">Usuários</h1>
+          <p class="panel-subtitle" id="panelWelcome">Painel de administração do ÍCARO</p>
+        </div>
+        <button class="logout-btn" id="logoutBtn">Sair</button>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">Criar usuário</h2>
+        <form id="createUserForm" class="create-form" autocomplete="off">
+          <div class="field">
+            <label for="newUsername">Usuário</label>
+            <input type="text" id="newUsername" placeholder="usuario" required>
+          </div>
+          <div class="field">
+            <label for="newPassword">Senha</label>
+            <input type="password" id="newPassword" placeholder="mínimo 6 caracteres" required>
+          </div>
+          <div class="field">
+            <label for="newRole">Papel</label>
+            <select id="newRole">
+              <option value="user">Usuário</option>
+              <option value="admin">Administrador</option>
+            </select>
+          </div>
+          <button type="submit" class="btn">Criar</button>
+        </form>
+        <p class="create-error" id="createError"></p>
+        <p class="create-success" id="createSuccess"></p>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">Todos os usuários</h2>
+        <div id="usersList">
+          <p class="panel-loading">Carregando usuários...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script type="module">
+  // ============================================================
+  // FERROFLUID — porta em vanilla JS/OGL do componente React Bits.
+  // Superfície fluida com contorno brilhante, reagindo ao mouse.
+  // Mantive as cores brancas padrão pra combinar com o resto do
+  // ÍCARO.
+  // ============================================================
+  import { Renderer, Program, Mesh, Triangle } from 'https://esm.sh/ogl@1.0.6';
+
+  const MAX_COLORS = 8;
+
+  function hexToRGB(hex) {
+    const c = hex.replace('#', '').padEnd(6, '0');
+    return [
+      parseInt(c.slice(0, 2), 16) / 255,
+      parseInt(c.slice(2, 4), 16) / 255,
+      parseInt(c.slice(4, 6), 16) / 255,
+    ];
+  }
+
+  function prepColors(input) {
+    const base = (input && input.length ? input : ['#ffffff', '#ffffff', '#ffffff']).slice(0, MAX_COLORS);
+    const count = base.length;
+    const arr = [];
+    for (let i = 0; i < MAX_COLORS; i++) arr.push(hexToRGB(base[Math.min(i, base.length - 1)]));
+    return { arr, count };
+  }
+
+  function flowVec(d) {
+    switch (d) {
+      case 'up': return [0, 1];
+      case 'down': return [0, -1];
+      case 'left': return [-1, 0];
+      case 'right': return [1, 0];
+      default: return [0, -1];
+    }
+  }
+
+  const vertex = `
+attribute vec2 position;
+attribute vec2 uv;
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = vec4(position, 0.0, 1.0);
+}
+`;
+
+  const fragment = `
+precision highp float;
+
+uniform vec3  iResolution;
+uniform vec2  iMouse;
+uniform float iTime;
+
+uniform vec3  uColor0;
+uniform vec3  uColor1;
+uniform vec3  uColor2;
+uniform vec3  uColor3;
+uniform vec3  uColor4;
+uniform vec3  uColor5;
+uniform vec3  uColor6;
+uniform vec3  uColor7;
+uniform int   uColorCount;
+
+uniform vec2  uFlow;
+uniform float uSpeed;
+uniform float uScale;
+uniform float uTurbulence;
+uniform float uFluidity;
+uniform float uRimWidth;
+uniform float uSharpness;
+uniform float uShimmer;
+uniform float uGlow;
+uniform float uOpacity;
+uniform float uMouseEnabled;
+uniform float uMouseStrength;
+uniform float uMouseRadius;
+
+varying vec2 vUv;
+
+#define PI 3.14159265
+
+vec3 palette(float h) {
+  int count = uColorCount;
+  if (count < 1) count = 1;
+  int idx = int(floor(clamp(h, 0.0, 0.999999) * float(count)));
+  if (idx <= 0) return uColor0;
+  if (idx == 1) return uColor1;
+  if (idx == 2) return uColor2;
+  if (idx == 3) return uColor3;
+  if (idx == 4) return uColor4;
+  if (idx == 5) return uColor5;
+  if (idx == 6) return uColor6;
+  return uColor7;
+}
+
+float hash(vec3 p3) {
+  p3 = fract(p3 * 0.1031);
+  p3 += dot(p3, p3.zyx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
+
+float smin(float a, float b, float k) {
+  float r = exp2(-a / k) + exp2(-b / k);
+  return -k * log2(r);
+}
+
+float sinlerp(float a, float b, float w) {
+  return mix(a, b, (sin(w * PI - PI / 2.0) + 1.0) / 2.0);
+}
+
+float vn(vec2 p, float s, float seed) {
+  vec2 cellp = floor(p / s);
+  vec2 relp = mod(p, s);
+  float g1 = hash(vec3(cellp, seed));
+  float g2 = hash(vec3(cellp.x + 1.0, cellp.y, seed));
+  float g3 = hash(vec3(cellp.x + 1.0, cellp.y + 1.0, seed));
+  float g4 = hash(vec3(cellp.x, cellp.y + 1.0, seed));
+  float bx = sinlerp(g1, g2, relp.x / s);
+  float tx = sinlerp(g4, g3, relp.x / s);
+  return sinlerp(bx, tx, relp.y / s);
+}
+
+float dbn(vec2 p, float s, float seed) {
+  float o = s / 2.0;
+  float n0 = vn(p, s, seed);
+  float n1 = vn(p + vec2(o, o), s, seed + 0.1);
+  float n2 = vn(p + vec2(-o, o), s, seed + 0.2);
+  float n3 = vn(p + vec2(o, -o), s, seed + 0.3);
+  float n4 = vn(p + vec2(-o, -o), s, seed + 0.4);
+  return (2.0 * n0 + 1.5 * n1 + 1.25 * n2 + 1.125 * n3 + n4) / 7.0;
+}
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+  float ref = 700.0 / max(uScale, 0.05);
+  vec2 p = fragCoord / iResolution.y * ref;
+
+  float spd = 200.0 * uSpeed;
+  float t = iTime;
+
+  vec2 dir = uFlow;
+  vec2 perp = vec2(-dir.y, dir.x);
+
+  float distort1 = vn(p + perp * (t * spd), 60.0, 10.0) * 50.0 * uTurbulence;
+  float distort2 = vn(p - perp * (t * spd), 120.0, 15.0) * 100.0 * uTurbulence;
+
+  float peaks = dbn(p + distort1 + dir * (t * spd * 0.5), 40.0, 1.0);
+  float peaks2 = dbn(p + distort2 - dir * (t * spd * 0.5), 40.0, 0.0);
+
+  float mapeaks = smin(peaks, peaks2, max(uFluidity, 0.001));
+
+  float mGlow = 0.0;
+  if (uMouseEnabled > 0.5) {
+    vec2 mp = iMouse / iResolution.y * ref;
+    float md = length(p - mp) / ref;
+    float rr = max(uMouseRadius, 0.02);
+    mGlow = exp(-md * md / (rr * rr)) * uMouseStrength;
+  }
+
+  float band = (uRimWidth - abs((mapeaks - 0.4) * 2.0)) * 5.0;
+  float ltn = clamp(band - vn(p + dir * (t * spd * 0.5), 60.0, 12.0) * uShimmer, 0.0, 1.0);
+  ltn = pow(ltn, uSharpness) * uGlow;
+  ltn *= clamp(1.0 - mGlow, 0.0, 1.0);
+
+  float h = clamp(0.5 + (peaks - peaks2) * 0.8, 0.0, 1.0);
+  vec3 col = palette(h);
+
+  vec3 outc = col * ltn;
+  float a = clamp(max(outc.r, max(outc.g, outc.b)), 0.0, 1.0);
+  fragColor = vec4(outc, a * uOpacity);
+}
+
+void main() {
+  vec4 color;
+  mainImage(color, vUv * iResolution.xy);
+  gl_FragColor = color;
+}
+`;
+
+  function initFerrofluid(canvas) {
+    const CFG = {
+      colors: ['#ffffff', '#ffffff', '#ffffff'],
+      speed: 0.5,
+      scale: 1.6,
+      turbulence: 1,
+      fluidity: 0.1,
+      rimWidth: 0.2,
+      sharpness: 2.5,
+      shimmer: 1.5,
+      glow: 2,
+      flowDirection: 'down',
+      opacity: 1,
+      mouseInteraction: true,
+      mouseStrength: 1,
+      mouseRadius: 0.35,
+      mouseDampening: 0.15,
+    };
+
+    const renderer = new Renderer({ dpr: Math.min(window.devicePixelRatio || 1, 2), alpha: true, antialias: true });
+    const gl = renderer.gl;
+    gl.clearColor(0, 0, 0, 0);
+    // Reaproveita o próprio <canvas id="bg-canvas"> em vez de criar um novo.
+    const container = canvas.parentElement;
+
+    const { arr, count } = prepColors(CFG.colors);
+
+    const uniforms = {
+      iResolution: { value: [gl.drawingBufferWidth, gl.drawingBufferHeight, 1] },
+      iMouse: { value: [0, 0] },
+      iTime: { value: 0 },
+      uColor0: { value: arr[0] }, uColor1: { value: arr[1] },
+      uColor2: { value: arr[2] }, uColor3: { value: arr[3] },
+      uColor4: { value: arr[4] }, uColor5: { value: arr[5] },
+      uColor6: { value: arr[6] }, uColor7: { value: arr[7] },
+      uColorCount: { value: count },
+      uFlow: { value: flowVec(CFG.flowDirection) },
+      uSpeed: { value: CFG.speed },
+      uScale: { value: CFG.scale },
+      uTurbulence: { value: CFG.turbulence },
+      uFluidity: { value: CFG.fluidity },
+      uRimWidth: { value: CFG.rimWidth },
+      uSharpness: { value: CFG.sharpness },
+      uShimmer: { value: CFG.shimmer },
+      uGlow: { value: CFG.glow },
+      uOpacity: { value: CFG.opacity },
+      uMouseEnabled: { value: CFG.mouseInteraction ? 1 : 0 },
+      uMouseStrength: { value: CFG.mouseStrength },
+      uMouseRadius: { value: CFG.mouseRadius },
+    };
+
+    const program = new Program(gl, { vertex, fragment, uniforms });
+    const geometry = new Triangle(gl);
+    const mesh = new Mesh(gl, { geometry, program });
+
+    function resize() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      renderer.setSize(w, h);
+      uniforms.iResolution.value = [gl.drawingBufferWidth, gl.drawingBufferHeight, 1];
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    let mouseTarget = [0, 0];
+    let lastTime = 0;
+
+    function onPointerMove(e) {
+      const sc = renderer.dpr || 1;
+      const x = e.clientX * sc;
+      const y = (window.innerHeight - e.clientY) * sc;
+      mouseTarget = [x, y];
+    }
+    if (CFG.mouseInteraction) {
+      window.addEventListener('pointermove', onPointerMove);
+    }
+
+    function loop(t) {
+      requestAnimationFrame(loop);
+      uniforms.iTime.value = t * 0.001;
+      if (CFG.mouseDampening > 0) {
+        if (!lastTime) lastTime = t;
+        const dt = (t - lastTime) / 1000;
+        lastTime = t;
+        const tau = Math.max(1e-4, CFG.mouseDampening);
+        let factor = 1 - Math.exp(-dt / tau);
+        if (factor > 1) factor = 1;
+        const cur = uniforms.iMouse.value;
+        cur[0] += (mouseTarget[0] - cur[0]) * factor;
+        cur[1] += (mouseTarget[1] - cur[1]) * factor;
+      }
+      try {
+        renderer.render({ scene: mesh });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    requestAnimationFrame(loop);
+
+    // Substitui o canvas placeholder pelo canvas real do OGL.
+    canvas.replaceWith(gl.canvas);
+    gl.canvas.id = 'bg-canvas';
+    Object.assign(gl.canvas.style, { position: 'fixed', inset: '0', width: '100%', height: '100%', display: 'block', zIndex: '0' });
+  }
+
+  initFerrofluid(document.getElementById('bg-canvas'));
+</script>
+
+<script>
+  // ============================================================
+  // Painel de administração — login (só admin), listar/criar/
+  // ativar/desativar/excluir usuários.
+  // ============================================================
+  (function () {
+    // TODO: já preenchido com a URL do seu backend no Render.
+    const API_BASE_URL = 'https://icarov2backend.onrender.com';
+
+    const loginStage = document.getElementById('admin-login-stage');
+    const loginForm = document.getElementById('adminLoginForm');
+    const adminUserInput = document.getElementById('adminUser');
+    const adminPassInput = document.getElementById('adminPass');
+    const loginError = document.getElementById('adminLoginError');
+
+    const panel = document.getElementById('admin-panel');
+    const panelWelcome = document.getElementById('panelWelcome');
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    const usersList = document.getElementById('usersList');
+
+    const createForm = document.getElementById('createUserForm');
+    const newUsername = document.getElementById('newUsername');
+    const newPassword = document.getElementById('newPassword');
+    const newRole = document.getElementById('newRole');
+    const createError = document.getElementById('createError');
+    const createSuccess = document.getElementById('createSuccess');
+
+    function getToken() { return localStorage.getItem('icaro_token'); }
+    function getUser() {
+      try { return JSON.parse(localStorage.getItem('icaro_user') || 'null'); }
+      catch (e) { return null; }
+    }
+    function setSession(token, user) {
+      localStorage.setItem('icaro_token', token);
+      localStorage.setItem('icaro_user', JSON.stringify(user));
+    }
+    function clearSession() {
+      localStorage.removeItem('icaro_token');
+      localStorage.removeItem('icaro_user');
+    }
+
+    async function api(path, options) {
+      const res = await fetch(API_BASE_URL + path, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer ' + getToken(),
+          ...(options && options.headers),
+        },
+      });
+      const data = await res.json().catch(function () { return {}; });
+      if (!res.ok) {
+        const err = new Error(data.error || 'Erro na requisição.');
+        err.status = res.status;
+        throw err;
+      }
+      return data;
+    }
+
+    function showPanel() {
+      const user = getUser();
+      loginStage.classList.add('hide');
+      panel.classList.add('show');
+      panelWelcome.textContent = user ? 'Conectado como ' + user.username : 'Painel de administração do ÍCARO';
+      loadUsers();
+    }
+
+    function showLoginGate() {
+      panel.classList.remove('show');
+      loginStage.classList.remove('hide');
+    }
+
+    // Se já tem uma sessão de admin salva, pula direto pro painel.
+    (function bootstrap() {
+      const user = getUser();
+      if (getToken() && user && user.role === 'admin') {
+        showPanel();
+      }
+    })();
+
+    loginForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      loginError.classList.remove('show');
+      adminUserInput.classList.remove('invalid');
+      adminPassInput.classList.remove('invalid');
+
+      const submitBtn = loginForm.querySelector('.btn');
+      const defaultText = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Verificando...';
+
+      try {
+        const res = await fetch(API_BASE_URL + '/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: adminUserInput.value.trim(),
+            password: adminPassInput.value,
+          }),
+        });
+        const data = await res.json().catch(function () { return {}; });
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Usuário ou senha inválidos.');
+        }
+        if (!data.user || data.user.role !== 'admin') {
+          throw new Error('Essa conta não tem permissão de administrador.');
+        }
+
+        setSession(data.token, data.user);
+        adminPassInput.value = '';
+        showPanel();
+      } catch (err) {
+        loginError.textContent = err.message;
+        loginError.classList.add('show');
+        adminUserInput.classList.add('invalid');
+        adminPassInput.classList.add('invalid');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = defaultText;
+      }
+    });
+
+    logoutBtn.addEventListener('click', function () {
+      clearSession();
+      showLoginGate();
+    });
+
+    function formatDate(iso) {
+      try {
+        return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+      } catch (e) {
+        return '';
+      }
+    }
+
+    function renderUsers(users) {
+      if (!users.length) {
+        usersList.innerHTML = '<p class="users-empty">Nenhum usuário cadastrado ainda.</p>';
+        return;
+      }
+      const me = getUser();
+      usersList.innerHTML = users.map(function (u) {
+        const isMe = me && me.id === u.id;
+        return (
+          '<div class="user-row" data-id="' + u.id + '">' +
+            '<div class="user-main">' +
+              '<div class="user-name">' + u.username + (isMe ? ' (você)' : '') + '</div>' +
+              '<div class="user-meta">' +
+                '<span class="badge ' + (u.role === 'admin' ? 'badge-role-admin' : 'badge-role-user') + '">' + (u.role === 'admin' ? 'Administrador' : 'Usuário') + '</span>' +
+                '<span class="badge ' + (u.active ? 'badge-active' : 'badge-inactive') + '">' + (u.active ? 'Ativo' : 'Inativo') + '</span>' +
+                '<span>Criado em ' + formatDate(u.createdAt) + '</span>' +
+              '</div>' +
+            '</div>' +
+            '<div class="user-actions">' +
+              '<button class="action-btn toggle-btn" data-active="' + u.active + '"' + (isMe ? ' disabled' : '') + '>' + (u.active ? 'Desativar' : 'Ativar') + '</button>' +
+              '<button class="action-btn danger delete-btn"' + (isMe ? ' disabled' : '') + '>Excluir</button>' +
+            '</div>' +
+          '</div>'
+        );
+      }).join('');
+    }
+
+    async function loadUsers() {
+      usersList.innerHTML = '<p class="panel-loading">Carregando usuários...</p>';
+      try {
+        const data = await api('/api/admin/users', { method: 'GET' });
+        renderUsers(data.users || []);
+      } catch (err) {
+        if (err.status === 401 || err.status === 403) {
+          clearSession();
+          showLoginGate();
+          return;
+        }
+        usersList.innerHTML = '<p class="panel-error">' + err.message + '</p>';
+      }
+    }
+
+    usersList.addEventListener('click', async function (e) {
+      const row = e.target.closest('.user-row');
+      if (!row) return;
+      const id = row.getAttribute('data-id');
+
+      if (e.target.classList.contains('toggle-btn')) {
+        const currentlyActive = e.target.getAttribute('data-active') === 'true';
+        e.target.disabled = true;
+        try {
+          await api('/api/admin/users/' + id + '/status', {
+            method: 'PATCH',
+            body: JSON.stringify({ active: !currentlyActive }),
+          });
+          loadUsers();
+        } catch (err) {
+          alert(err.message);
+          e.target.disabled = false;
+        }
+      }
+
+      if (e.target.classList.contains('delete-btn')) {
+        const name = row.querySelector('.user-name').textContent;
+        if (!confirm('Excluir o usuário "' + name + '" definitivamente? Essa ação não pode ser desfeita.')) return;
+        e.target.disabled = true;
+        try {
+          await api('/api/admin/users/' + id, { method: 'DELETE' });
+          loadUsers();
+        } catch (err) {
+          alert(err.message);
+          e.target.disabled = false;
+        }
+      }
+    });
+
+    createForm.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      createError.classList.remove('show');
+      createSuccess.classList.remove('show');
+
+      const submitBtn = createForm.querySelector('.btn');
+      const defaultText = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Criando...';
+
+      try {
+        const data = await api('/api/admin/users', {
+          method: 'POST',
+          body: JSON.stringify({
+            username: newUsername.value.trim(),
+            password: newPassword.value,
+            role: newRole.value,
+          }),
+        });
+        createSuccess.textContent = 'Usuário "' + data.user.username + '" criado com sucesso.';
+        createSuccess.classList.add('show');
+        createForm.reset();
+        loadUsers();
+      } catch (err) {
+        createError.textContent = err.message;
+        createError.classList.add('show');
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = defaultText;
+      }
+    });
+  })();
+</script>
+
+</body>
+</html>

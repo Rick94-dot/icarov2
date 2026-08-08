@@ -225,6 +225,36 @@
     #zoom-wrap { transition: opacity 0.6s ease; transform: none !important; }
     #cursor { animation: none; opacity: 1; }
   }
+
+  #logoutBtn {
+    position: fixed;
+    top: 24px;
+    right: 28px;
+    z-index: 10;
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(10, 10, 14, 0.55);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: #ffffff;
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease, background 0.2s ease;
+  }
+
+  #logoutBtn.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  #logoutBtn:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
 </style>
 </head>
 <body>
@@ -232,6 +262,9 @@
   <div id="zoom-wrap">
     <div id="chromatic-bg"></div>
     <div id="globe-container"></div>
+
+    <button id="logoutBtn" type="button">Sair</button>
+
     <div id="text-overlay">
       <div id="connected-text"><span id="typedText2"></span><span id="cursor">_</span></div>
     </div>
@@ -741,8 +774,27 @@ void main() {
 
   let dotInstances = null;
 
+  // Pega o usuário salvo no login e monta uma saudação — sorteada
+  // entre algumas variações toda vez que a página carrega, pra não
+  // ficar repetitivo a cada entrada.
+  function getGreeting() {
+    let user = null;
+    try { user = JSON.parse(localStorage.getItem('icaro_user') || 'null'); }
+    catch (e) { user = null; }
+
+    const rawName = (user && user.username) ? user.username : 'visitante';
+    const name = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+
+    const options = [
+      'Olá, ' + name,
+      'Bom ter você aqui, ' + name,
+      'Quem vamos procurar hoje, ' + name + '?',
+    ];
+    return options[Math.floor(Math.random() * options.length)];
+  }
+
   function startTypewriter() {
-    const text = 'Estamos conectados';
+    const text = getGreeting();
     const typeDelayMs = 70;
     const holdBeforeFadeMs = 2200;
     const typedEl = document.getElementById('typedText2');
@@ -769,6 +821,8 @@ void main() {
     canvas.style.opacity = '1';
     document.getElementById('zoom-wrap').classList.add('in');
     setTimeout(startTypewriter, 500);
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) logoutBtn.classList.add('show');
   }
   let revealed = false;
   function revealOnce() {
@@ -1065,6 +1119,19 @@ void main() {
       const digits = onlyDigits(input.value);
       // TODO: enviar o CNPJ validado para o próximo passo do ÍCARO
       console.log('CNPJ válido, pronto para buscar:', digits);
+    });
+  })();
+
+  // ============================================================
+  // Botão Sair — limpa a sessão e volta pro login.
+  // ============================================================
+  (function () {
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (!logoutBtn) return;
+    logoutBtn.addEventListener('click', function () {
+      localStorage.removeItem('icaro_token');
+      localStorage.removeItem('icaro_user');
+      window.location.href = 'index.html';
     });
   })();
 </script>

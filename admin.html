@@ -486,26 +486,6 @@
 
   <canvas id="bg-canvas"></canvas>
 
-  <!-- ---------- login restrito a administrador ---------- -->
-  <div id="admin-login-stage">
-    <div class="admin-login-card">
-      <h1 class="admin-login-title">Administração</h1>
-      <p class="admin-login-subtitle">Acesso restrito</p>
-      <form id="adminLoginForm" autocomplete="off">
-        <div class="field">
-          <label for="adminUser">Usuário</label>
-          <input type="text" id="adminUser" placeholder="Usuário admin" required>
-        </div>
-        <div class="field">
-          <label for="adminPass">Senha</label>
-          <input type="password" id="adminPass" placeholder="Senha" required>
-        </div>
-        <button type="submit" class="btn">Entrar</button>
-        <p class="admin-error" id="adminLoginError">Usuário ou senha inválidos.</p>
-      </form>
-    </div>
-  </div>
-
   <!-- ---------- painel ---------- -->
   <div id="admin-panel">
     <div class="admin-topbar">
@@ -895,12 +875,6 @@ void main() {
     // TODO: já preenchido com a URL do seu backend no Render.
     const API_BASE_URL = 'https://icarov2backend.onrender.com';
 
-    const loginStage = document.getElementById('admin-login-stage');
-    const loginForm = document.getElementById('adminLoginForm');
-    const adminUserInput = document.getElementById('adminUser');
-    const adminPassInput = document.getElementById('adminPass');
-    const loginError = document.getElementById('adminLoginError');
-
     const panel = document.getElementById('admin-panel');
     const dock = document.getElementById('admin-dock');
     const logoutBtn = document.getElementById('logoutBtn');
@@ -982,73 +956,27 @@ void main() {
     }
 
     function showPanel() {
-      loginStage.classList.add('hide');
       panel.classList.add('show');
       dock.classList.add('show');
       showView('home');
       typeHomeWelcome();
     }
 
-    function showLoginGate() {
-      panel.classList.remove('show');
-      dock.classList.remove('show');
-      loginStage.classList.remove('hide');
-    }
-
-    // Se já tem uma sessão de admin salva, pula direto pro painel.
+    // O admin.html não tem login próprio — só se entra por aqui vindo
+    // do login normal (index.html) com uma conta role: 'admin'. Sem
+    // sessão válida de admin, manda de volta pro login.
     (function bootstrap() {
       const user = getUser();
       if (getToken() && user && user.role === 'admin') {
         showPanel();
+      } else {
+        window.location.href = 'index.html';
       }
     })();
 
-    loginForm.addEventListener('submit', async function (e) {
-      e.preventDefault();
-      loginError.classList.remove('show');
-      adminUserInput.classList.remove('invalid');
-      adminPassInput.classList.remove('invalid');
-
-      const submitBtn = loginForm.querySelector('.btn');
-      const defaultText = submitBtn.textContent;
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Verificando...';
-
-      try {
-        const res = await fetch(API_BASE_URL + '/api/auth/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username: adminUserInput.value.trim(),
-            password: adminPassInput.value,
-          }),
-        });
-        const data = await res.json().catch(function () { return {}; });
-
-        if (!res.ok) {
-          throw new Error(data.error || 'Usuário ou senha inválidos.');
-        }
-        if (!data.user || data.user.role !== 'admin') {
-          throw new Error('Essa conta não tem permissão de administrador.');
-        }
-
-        setSession(data.token, data.user);
-        adminPassInput.value = '';
-        showPanel();
-      } catch (err) {
-        loginError.textContent = err.message;
-        loginError.classList.add('show');
-        adminUserInput.classList.add('invalid');
-        adminPassInput.classList.add('invalid');
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = defaultText;
-      }
-    });
-
     logoutBtn.addEventListener('click', function () {
       clearSession();
-      showLoginGate();
+      window.location.href = 'index.html';
     });
 
     function formatDate(iso) {
@@ -1094,7 +1022,7 @@ void main() {
       } catch (err) {
         if (err.status === 401 || err.status === 403) {
           clearSession();
-          showLoginGate();
+          window.location.href = 'index.html';
           return;
         }
         usersList.innerHTML = '<p class="panel-error">' + err.message + '</p>';

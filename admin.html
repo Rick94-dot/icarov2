@@ -182,20 +182,32 @@
     padding: 24px;
   }
 
-  .home-title {
+  .home-welcome {
     font-family: 'Fraunces', Georgia, serif;
     font-weight: 500;
-    font-size: clamp(32px, 6vw, 52px);
+    font-size: clamp(40px, 8vw, 84px);
     color: var(--white);
-    margin: 0 0 12px;
     letter-spacing: -0.01em;
-    text-shadow: 0 0 30px rgba(0,0,0,0.6);
+    white-space: pre-wrap;
+    min-height: 1.2em;
+    text-align: center;
   }
 
-  .home-subtitle {
-    font-size: 13.5px;
-    color: var(--white-dim);
-    letter-spacing: 0.3px;
+  .home-welcome .typed {
+    color: var(--white);
+    text-shadow: 0 0 26px rgba(255, 255, 255, 0.45);
+  }
+
+  .home-cursor {
+    display: inline-block;
+    margin-left: 4px;
+    color: var(--white);
+    animation: blink 1s steps(1) infinite;
+  }
+
+  @keyframes blink {
+    0%, 45% { opacity: 1; }
+    50%, 100% { opacity: 0; }
   }
 
   /* ---------- dock de navegação ---------- */
@@ -209,9 +221,16 @@
     justify-content: center;
     padding-bottom: 26px;
     pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.5s ease;
   }
 
-  #admin-dock.hidden { display: none; }
+  #admin-dock.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  #admin-dock.show .dock-panel { pointer-events: auto; }
 
   .dock-panel {
     pointer-events: auto;
@@ -495,8 +514,7 @@
 
     <!-- tela inicial -->
     <div id="view-home" class="admin-view active">
-      <h1 class="home-title">Bem-vindo, Administrador</h1>
-      <p class="home-subtitle" id="panelWelcome">Escolha uma opção abaixo para continuar</p>
+      <div class="home-welcome"><span class="typed" id="homeTypedText"></span><span class="home-cursor">_</span></div>
     </div>
 
     <!-- aba: usuários -->
@@ -571,12 +589,14 @@
         </div>
       </div>
     </div>
-
-    <!-- dock de navegação -->
-    <nav id="admin-dock">
-      <div class="dock-panel" id="dockPanel"></div>
-    </nav>
   </div>
+
+  <!-- dock de navegação — fica FORA do #admin-panel de propósito, direto
+       no body, pra nunca herdar opacidade/transform/stacking context de
+       nenhum ancestral. Visibilidade controlada via classe .show pelo JS. -->
+  <nav id="admin-dock">
+    <div class="dock-panel" id="dockPanel"></div>
+  </nav>
 
 <script type="module">
   // ============================================================
@@ -882,7 +902,7 @@ void main() {
     const loginError = document.getElementById('adminLoginError');
 
     const panel = document.getElementById('admin-panel');
-    const panelWelcome = document.getElementById('panelWelcome');
+    const dock = document.getElementById('admin-dock');
     const logoutBtn = document.getElementById('logoutBtn');
 
     const usersList = document.getElementById('usersList');
@@ -926,16 +946,33 @@ void main() {
       return data;
     }
 
+    let homeTyped = false;
+    function typeHomeWelcome() {
+      if (homeTyped) return;
+      homeTyped = true;
+      const text = 'Bem-vindo, Administrador';
+      const typedEl = document.getElementById('homeTypedText');
+      let i = 0;
+      (function typeNext() {
+        if (i < text.length) {
+          typedEl.textContent += text[i];
+          i++;
+          setTimeout(typeNext, 55);
+        }
+      })();
+    }
+
     function showPanel() {
-      const user = getUser();
       loginStage.classList.add('hide');
       panel.classList.add('show');
-      panelWelcome.textContent = user ? 'Conectado como ' + user.username + ' — escolha uma opção abaixo' : 'Escolha uma opção abaixo para continuar';
+      dock.classList.add('show');
       showView('home');
+      typeHomeWelcome();
     }
 
     function showLoginGate() {
       panel.classList.remove('show');
+      dock.classList.remove('show');
       loginStage.classList.remove('hide');
     }
 
@@ -1159,6 +1196,10 @@ void main() {
       const SPRING = { mass: 0.1, stiffness: 150, damping: 12 };
 
       const dockPanel = document.getElementById('dockPanel');
+      if (!dockPanel) {
+        console.error('[ÍCARO] #dockPanel não encontrado no DOM — dock não será criado.');
+        return;
+      }
       const items = [];
 
       DOCK_ITEMS.forEach(function (def) {

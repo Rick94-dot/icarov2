@@ -1193,7 +1193,7 @@ void main() {
       const BASE_SIZE = 50;
       const MAGNIFICATION = 70;
       const DISTANCE = 200;
-      const SPRING = { mass: 0.1, stiffness: 150, damping: 12 };
+      const SMOOTH_TAU = 0.09; // segundos — controla a suavidade do crescimento
 
       const dockPanel = document.getElementById('dockPanel');
       if (!dockPanel) {
@@ -1216,7 +1216,7 @@ void main() {
           if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showView(def.view); }
         });
         dockPanel.appendChild(el);
-        items.push({ el: el, size: BASE_SIZE, velocity: 0, target: BASE_SIZE });
+        items.push({ el: el, size: BASE_SIZE, target: BASE_SIZE });
       });
 
       let mouseX = null;
@@ -1246,27 +1246,30 @@ void main() {
       }
 
       let lastT = null;
-      function springLoop(t) {
-        requestAnimationFrame(springLoop);
+      function animLoop(t) {
+        requestAnimationFrame(animLoop);
         if (lastT === null) lastT = t;
         const dt = Math.min(0.05, (t - lastT) / 1000);
         lastT = t;
 
         updateTargets();
 
+        // Suavização exponencial (sempre estável, sem físicas que
+        // podem "explodir" com valores altos de dt): a cada frame o
+        // tamanho anda uma fração do caminho até o alvo.
+        const factor = 1 - Math.exp(-dt / SMOOTH_TAU);
+
         items.forEach(function (item) {
-          // Integração de mola amortecida (semi-implícita).
-          const force = (item.target - item.size) * SPRING.stiffness;
-          const damping = item.velocity * SPRING.damping;
-          const accel = (force - damping) / SPRING.mass;
-          item.velocity += accel * dt;
-          item.size += item.velocity * dt;
+          item.size += (item.target - item.size) * factor;
+          // Limite de segurança: nunca deixa passar do intervalo
+          // [BASE_SIZE, MAGNIFICATION], não importa o que aconteça.
+          item.size = Math.max(BASE_SIZE, Math.min(MAGNIFICATION, item.size));
 
           item.el.style.width = item.size + 'px';
           item.el.style.height = item.size + 'px';
         });
       }
-      requestAnimationFrame(springLoop);
+      requestAnimationFrame(animLoop);
     })();
   })();
 </script>

@@ -310,6 +310,67 @@
     padding: 8px 4px 4px;
   }
 
+  /* ---------- utilização (atividade por usuário) ---------- */
+  .usage-group {
+    margin-bottom: 24px;
+  }
+  .usage-group:last-child { margin-bottom: 0; }
+
+  .usage-group-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 10px;
+    margin-bottom: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .usage-group-name {
+    color: var(--white);
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .usage-group-count {
+    font-size: 11.5px;
+    color: var(--white-dim);
+  }
+
+  .usage-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 13px;
+    flex-wrap: wrap;
+  }
+  .usage-row:last-child { border-bottom: none; }
+
+  .usage-type {
+    display: inline-block;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+  .usage-type-login { background: rgba(94, 200, 255, 0.15); color: #5ec8ff; }
+  .usage-type-search { background: rgba(232, 169, 75, 0.18); color: #e8a94b; }
+
+  .usage-detail {
+    color: var(--white);
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .usage-time {
+    color: var(--white-dim);
+    font-size: 11.5px;
+    white-space: nowrap;
+  }
+
   .panel-header {
     display: flex;
     align-items: flex-end;
@@ -540,17 +601,19 @@
       </div>
     </div>
 
-    <!-- aba: utilização (vazia por enquanto) -->
+    <!-- aba: utilização -->
     <div id="view-usage" class="admin-view">
       <div class="panel-wrap">
         <div class="panel-header">
           <div>
             <h1 class="panel-title">Utilização</h1>
-            <p class="panel-subtitle">Métricas de uso do sistema</p>
+            <p class="panel-subtitle">Logins e buscas de CNPJ, por usuário</p>
           </div>
         </div>
         <div class="card">
-          <p class="placeholder-view">Em breve.</p>
+          <div id="usageList">
+            <p class="panel-loading">Carregando atividade...</p>
+          </div>
         </div>
       </div>
     </div>
@@ -904,6 +967,7 @@ void main() {
         item.classList.toggle('active', item.getAttribute('data-view') === name);
       });
       if (name === 'users') loadUsers();
+      if (name === 'usage') loadUsage();
     }
     window.__icaroShowView = showView;
 
@@ -1026,6 +1090,80 @@ void main() {
           return;
         }
         usersList.innerHTML = '<p class="panel-error">' + err.message + '</p>';
+      }
+    }
+
+    function formatDateTime(iso) {
+      try {
+        return new Date(iso).toLocaleString('pt-BR', {
+          day: '2-digit', month: '2-digit', year: 'numeric',
+          hour: '2-digit', minute: '2-digit',
+        });
+      } catch (e) {
+        return '';
+      }
+    }
+
+    function renderUsage(activities) {
+      const usageList = document.getElementById('usageList');
+      if (!activities.length) {
+        usageList.innerHTML = '<p class="users-empty">Nenhuma atividade registrada ainda.</p>';
+        return;
+      }
+
+      // Agrupa por username, mantendo a ordem (mais recente primeiro
+      // dentro de cada grupo, já que a API já manda ordenado).
+      const groups = {};
+      const order = [];
+      activities.forEach(function (a) {
+        if (!groups[a.username]) {
+          groups[a.username] = [];
+          order.push(a.username);
+        }
+        groups[a.username].push(a);
+      });
+
+      usageList.innerHTML = order.map(function (username) {
+        const entries = groups[username];
+        const rows = entries.map(function (a) {
+          const isLogin = a.type === 'login';
+          const typeLabel = isLogin ? 'Login' : 'Busca';
+          const typeClass = isLogin ? 'usage-type-login' : 'usage-type-search';
+          const detail = isLogin ? 'Entrou no sistema' : ('CNPJ ' + (a.cnpj || '—'));
+          return (
+            '<div class="usage-row">' +
+              '<span class="usage-type ' + typeClass + '">' + typeLabel + '</span>' +
+              '<span class="usage-detail">' + detail + '</span>' +
+              '<span class="usage-time">' + formatDateTime(a.createdAt) + '</span>' +
+            '</div>'
+          );
+        }).join('');
+
+        return (
+          '<div class="usage-group">' +
+            '<div class="usage-group-header">' +
+              '<span class="usage-group-name">' + username + '</span>' +
+              '<span class="usage-group-count">' + entries.length + ' evento' + (entries.length === 1 ? '' : 's') + '</span>' +
+            '</div>' +
+            rows +
+          '</div>'
+        );
+      }).join('');
+    }
+
+    async function loadUsage() {
+      const usageList = document.getElementById('usageList');
+      usageList.innerHTML = '<p class="panel-loading">Carregando atividade...</p>';
+      try {
+        const data = await api('/api/admin/activity', { method: 'GET' });
+        renderUsage(data.activities || []);
+      } catch (err) {
+        if (err.status === 401 || err.status === 403) {
+          clearSession();
+          window.location.href = 'index.html';
+          return;
+        }
+        usageList.innerHTML = '<p class="panel-error">' + err.message + '</p>';
       }
     }
 

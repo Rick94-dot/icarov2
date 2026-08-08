@@ -66,6 +66,12 @@
     pointer-events: none;
     text-align: center;
     padding: 9vh 20px 0;
+    transition: opacity 0.8s ease;
+    opacity: 1;
+  }
+
+  #text-overlay.fade-out {
+    opacity: 0;
   }
 
   #connected-text {
@@ -91,6 +97,130 @@
     50%, 100% { opacity: 0; }
   }
 
+  /* ---------- campo de CNPJ, centralizado sobre o globo ---------- */
+  #cnpj-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.8s ease;
+  }
+
+  #cnpj-stage.show {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .cnpj-card {
+    width: 100%;
+    max-width: 380px;
+    padding: 40px 34px 32px;
+    border-radius: 20px;
+    background: #0c0c10;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(255, 255, 255, 0.05);
+    text-align: center;
+  }
+
+  .cnpj-title {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500;
+    font-size: 26px;
+    color: var(--white);
+    margin: 0 0 6px;
+    letter-spacing: -0.01em;
+  }
+
+  .cnpj-subtitle {
+    font-size: 12.5px;
+    letter-spacing: 0.5px;
+    color: rgba(255, 255, 255, 0.5);
+    margin: 0 0 28px;
+  }
+
+  .cnpj-field {
+    text-align: left;
+    margin-bottom: 22px;
+  }
+
+  .cnpj-field label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.65);
+    margin-bottom: 8px;
+  }
+
+  .cnpj-field input {
+    width: 100%;
+    padding: 13px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--white);
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 16px;
+    letter-spacing: 0.5px;
+    outline: none;
+    transition: border-color 0.2s ease, background 0.2s ease;
+  }
+
+  .cnpj-field input::placeholder { color: rgba(255,255,255,0.28); }
+
+  .cnpj-field input:focus {
+    border-color: rgba(255,255,255,0.55);
+    background: rgba(255, 255, 255, 0.07);
+  }
+
+  .cnpj-field input.valid {
+    border-color: #4ade80;
+    background: rgba(74, 222, 128, 0.06);
+  }
+
+  .cnpj-field input.invalid {
+    border-color: #ff5c5c;
+    background: rgba(255, 92, 92, 0.06);
+  }
+
+  .cnpj-error {
+    display: none;
+    margin: 8px 2px 0;
+    font-size: 12px;
+    color: #ff6b6b;
+  }
+
+  .cnpj-error.show { display: block; }
+
+  .cnpj-btn {
+    width: 100%;
+    padding: 14px;
+    border-radius: 10px;
+    border: none;
+    background: var(--white);
+    color: #0a0a0e;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: opacity 0.2s ease, transform 0.1s ease;
+  }
+
+  .cnpj-btn:hover:not(:disabled) { opacity: 0.88; }
+  .cnpj-btn:active:not(:disabled) { transform: scale(0.98); }
+
+  .cnpj-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     #zoom-wrap { transition: opacity 0.6s ease; transform: none !important; }
     #cursor { animation: none; opacity: 1; }
@@ -104,6 +234,19 @@
     <div id="globe-container"></div>
     <div id="text-overlay">
       <div id="connected-text"><span id="typedText2"></span><span id="cursor">_</span></div>
+    </div>
+
+    <div id="cnpj-stage">
+      <div class="cnpj-card">
+        <h2 class="cnpj-title">Consultar prestador</h2>
+        <p class="cnpj-subtitle">Digite o CNPJ para continuar</p>
+        <div class="cnpj-field">
+          <label for="cnpjInput">CNPJ</label>
+          <input type="text" id="cnpjInput" inputmode="numeric" placeholder="00.000.000/0000-00" maxlength="18" autocomplete="off">
+          <p class="cnpj-error" id="cnpjError">CNPJ inválido.</p>
+        </div>
+        <button type="button" class="cnpj-btn" id="cnpjBtn" disabled>Buscar</button>
+      </div>
     </div>
   </div>
 
@@ -373,19 +516,53 @@ void main() {
     });
     const dotMesh = new Mesh(gl, { geometry: new Plane(gl, { width: 2, height: 2 }), program: dotProgram });
 
+    // ---- Ciclo de cores do fundo — começa em branco e faz
+    // transições suaves entre 3 cores, em loop contínuo. ----
+    const BG_COLORS = ['#ffffff', '#e8a94b', '#5ec8ff'];
+    const BG_SEGMENT_MS = 6000; // duração de cada transição
+    const bgColorsRgb = BG_COLORS.map((c) => parseColorToRgba(c));
+
+    function easeInOutQuad(t) {
+      return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    }
+
+    function currentBgRgb(elapsedMs) {
+      const n = bgColorsRgb.length;
+      const total = n * BG_SEGMENT_MS;
+      const t = elapsedMs % total;
+      const idx = Math.floor(t / BG_SEGMENT_MS);
+      const localT = easeInOutQuad((t % BG_SEGMENT_MS) / BG_SEGMENT_MS);
+      const a = bgColorsRgb[idx];
+      const b = bgColorsRgb[(idx + 1) % n];
+      return [
+        a[0] + (b[0] - a[0]) * localT,
+        a[1] + (b[1] - a[1]) * localT,
+        a[2] + (b[2] - a[2]) * localT,
+      ];
+    }
+
+    function buildPaletteArray(rgbColor) {
+      const arr = [rgbColor];
+      for (let i = 1; i < MAX_COLORS; i++) arr.push([0, 0, 0]);
+      return arr;
+    }
+
     doResize();
 
     const frameInterval = 1000 / 30;
     let lastTime = 0;
+    let bgStartTime = null;
     function update(time) {
       if (time - lastTime < frameInterval) {
         requestAnimationFrame(update);
         return;
       }
       lastTime = time;
+      if (bgStartTime === null) bgStartTime = time;
       perlinProgram.uniforms.uTime.value = time * 0.001;
       renderer.render({ scene: perlinMesh, camera, target: renderTarget });
       dotProgram.uniforms.uResolution.value = [gl.canvas.width, gl.canvas.height];
+      dotProgram.uniforms.uPalette.value = buildPaletteArray(currentBgRgb(time - bgStartTime));
       renderer.render({ scene: dotMesh, camera });
       requestAnimationFrame(update);
     }
@@ -567,13 +744,23 @@ void main() {
   function startTypewriter() {
     const text = 'Estamos conectados';
     const typeDelayMs = 70;
+    const holdBeforeFadeMs = 2200;
     const typedEl = document.getElementById('typedText2');
+    const textOverlay = document.getElementById('text-overlay');
+    const cnpjStage = document.getElementById('cnpj-stage');
     let i = 0;
     (function typeNext() {
       if (i < text.length) {
         typedEl.textContent += text[i];
         i++;
         setTimeout(typeNext, typeDelayMs);
+      } else {
+        setTimeout(function () {
+          textOverlay.classList.add('fade-out');
+          setTimeout(function () {
+            cnpjStage.classList.add('show');
+          }, 500);
+        }, holdBeforeFadeMs);
       }
     })();
   }
@@ -797,6 +984,89 @@ void main() {
   // escrever usada no "Bem-vindo" da tela de login — ver
   // startTypewriter() definida acima, disparada por revealPage().
 
+</script>
+
+<script>
+  // ============================================================
+  // CNPJ — máscara de digitação + validação dos dígitos
+  // verificadores (algoritmo padrão módulo 11).
+  // ============================================================
+  (function () {
+    function onlyDigits(v) {
+      return v.replace(/\D/g, '').slice(0, 14);
+    }
+
+    function formatCNPJ(digits) {
+      let v = digits;
+      v = v.replace(/^(\d{2})(\d)/, '$1.$2');
+      v = v.replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3');
+      v = v.replace(/\.(\d{3})(\d)/, '.$1/$2');
+      v = v.replace(/(\d{4})(\d)/, '$1-$2');
+      return v;
+    }
+
+    function isValidCNPJ(digits) {
+      if (digits.length !== 14) return false;
+      if (/^(\d)\1{13}$/.test(digits)) return false; // todos os dígitos iguais
+
+      const calcCheckDigit = (base) => {
+        let length = base.length;
+        let pos = length - 7;
+        let sum = 0;
+        for (let i = length; i >= 1; i--) {
+          sum += parseInt(base.charAt(length - i), 10) * pos--;
+          if (pos < 2) pos = 9;
+        }
+        const result = sum % 11;
+        return result < 2 ? 0 : 11 - result;
+      };
+
+      const base12 = digits.substring(0, 12);
+      const digit1 = calcCheckDigit(base12);
+      if (digit1 !== parseInt(digits.charAt(12), 10)) return false;
+
+      const base13 = digits.substring(0, 13);
+      const digit2 = calcCheckDigit(base13);
+      if (digit2 !== parseInt(digits.charAt(13), 10)) return false;
+
+      return true;
+    }
+
+    const input = document.getElementById('cnpjInput');
+    const errorMsg = document.getElementById('cnpjError');
+    const btn = document.getElementById('cnpjBtn');
+
+    input.addEventListener('input', function () {
+      const digits = onlyDigits(input.value);
+      input.value = formatCNPJ(digits);
+
+      input.classList.remove('valid', 'invalid');
+      errorMsg.classList.remove('show');
+      btn.disabled = true;
+
+      if (digits.length === 0) return;
+
+      if (digits.length < 14) {
+        // ainda digitando — não mostra erro nem sucesso
+        return;
+      }
+
+      if (isValidCNPJ(digits)) {
+        input.classList.add('valid');
+        btn.disabled = false;
+      } else {
+        input.classList.add('invalid');
+        errorMsg.classList.add('show');
+      }
+    });
+
+    btn.addEventListener('click', function () {
+      if (btn.disabled) return;
+      const digits = onlyDigits(input.value);
+      // TODO: enviar o CNPJ validado para o próximo passo do ÍCARO
+      console.log('CNPJ válido, pronto para buscar:', digits);
+    });
+  })();
 </script>
 
 </body>

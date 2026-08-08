@@ -150,16 +150,145 @@
     position: relative;
     z-index: 2;
     min-height: 100vh;
-    padding: 48px 24px 80px;
     opacity: 0;
     transition: opacity 0.7s ease;
   }
 
   #admin-panel.show { opacity: 1; }
 
-  .panel-wrap {
-    max-width: 880px;
-    margin: 0 auto;
+  .admin-topbar {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 4;
+    padding: 24px 28px;
+  }
+
+  /* ---------- views (abas) ---------- */
+  .admin-view {
+    display: none;
+    min-height: 100vh;
+    padding: 48px 24px 160px;
+  }
+
+  .admin-view.active { display: block; }
+
+  #view-home.active {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 24px;
+  }
+
+  .home-title {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500;
+    font-size: clamp(32px, 6vw, 52px);
+    color: var(--white);
+    margin: 0 0 12px;
+    letter-spacing: -0.01em;
+    text-shadow: 0 0 30px rgba(0,0,0,0.6);
+  }
+
+  .home-subtitle {
+    font-size: 13.5px;
+    color: var(--white-dim);
+    letter-spacing: 0.3px;
+  }
+
+  /* ---------- dock de navegação ---------- */
+  #admin-dock {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 6;
+    display: flex;
+    justify-content: center;
+    padding-bottom: 26px;
+    pointer-events: none;
+  }
+
+  #admin-dock.hidden { display: none; }
+
+  .dock-panel {
+    pointer-events: auto;
+    display: flex;
+    align-items: flex-end;
+    gap: 16px;
+    padding: 0 16px 14px;
+    border-radius: 22px;
+    background: rgba(10, 10, 14, 0.75);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  .dock-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 50px;
+    height: 50px;
+    margin-top: 14px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.045);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    color: var(--white);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+
+  .dock-item:hover, .dock-item.active {
+    background: rgba(255, 255, 255, 0.11);
+    border-color: rgba(255, 255, 255, 0.24);
+  }
+
+  .dock-item.active::after {
+    content: '';
+    position: absolute;
+    bottom: -9px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--white);
+  }
+
+  .dock-item svg {
+    width: 46%;
+    height: 46%;
+    flex-shrink: 0;
+  }
+
+  .dock-label {
+    position: absolute;
+    top: -36px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    background: rgba(10, 10, 14, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 7px;
+    padding: 5px 11px;
+    font-size: 11.5px;
+    letter-spacing: 0.2px;
+    color: var(--white);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+  }
+
+  .dock-item:hover .dock-label { opacity: 1; }
+
+  .placeholder-view {
+    color: var(--white-dim);
+    font-size: 13.5px;
+    padding: 8px 4px 4px;
   }
 
   .panel-header {
@@ -360,46 +489,93 @@
 
   <!-- ---------- painel ---------- -->
   <div id="admin-panel">
-    <div class="panel-wrap">
-      <div class="panel-header">
-        <div>
-          <h1 class="panel-title">Usuários</h1>
-          <p class="panel-subtitle" id="panelWelcome">Painel de administração do ÍCARO</p>
+    <div class="admin-topbar">
+      <button class="logout-btn" id="logoutBtn">Sair</button>
+    </div>
+
+    <!-- tela inicial -->
+    <div id="view-home" class="admin-view active">
+      <h1 class="home-title">Bem-vindo, Administrador</h1>
+      <p class="home-subtitle" id="panelWelcome">Escolha uma opção abaixo para continuar</p>
+    </div>
+
+    <!-- aba: usuários -->
+    <div id="view-users" class="admin-view">
+      <div class="panel-wrap">
+        <div class="panel-header">
+          <div>
+            <h1 class="panel-title">Usuários</h1>
+            <p class="panel-subtitle">Crie, exclua, ative ou desative acessos</p>
+          </div>
         </div>
-        <button class="logout-btn" id="logoutBtn">Sair</button>
-      </div>
 
-      <div class="card">
-        <h2 class="card-title">Criar usuário</h2>
-        <form id="createUserForm" class="create-form" autocomplete="off">
-          <div class="field">
-            <label for="newUsername">Usuário</label>
-            <input type="text" id="newUsername" placeholder="usuario" required>
-          </div>
-          <div class="field">
-            <label for="newPassword">Senha</label>
-            <input type="password" id="newPassword" placeholder="mínimo 6 caracteres" required>
-          </div>
-          <div class="field">
-            <label for="newRole">Papel</label>
-            <select id="newRole">
-              <option value="user">Usuário</option>
-              <option value="admin">Administrador</option>
-            </select>
-          </div>
-          <button type="submit" class="btn">Criar</button>
-        </form>
-        <p class="create-error" id="createError"></p>
-        <p class="create-success" id="createSuccess"></p>
-      </div>
+        <div class="card">
+          <h2 class="card-title">Criar usuário</h2>
+          <form id="createUserForm" class="create-form" autocomplete="off">
+            <div class="field">
+              <label for="newUsername">Usuário</label>
+              <input type="text" id="newUsername" placeholder="usuario" required>
+            </div>
+            <div class="field">
+              <label for="newPassword">Senha</label>
+              <input type="password" id="newPassword" placeholder="mínimo 6 caracteres" required>
+            </div>
+            <div class="field">
+              <label for="newRole">Papel</label>
+              <select id="newRole">
+                <option value="user">Usuário</option>
+                <option value="admin">Administrador</option>
+              </select>
+            </div>
+            <button type="submit" class="btn">Criar</button>
+          </form>
+          <p class="create-error" id="createError"></p>
+          <p class="create-success" id="createSuccess"></p>
+        </div>
 
-      <div class="card">
-        <h2 class="card-title">Todos os usuários</h2>
-        <div id="usersList">
-          <p class="panel-loading">Carregando usuários...</p>
+        <div class="card">
+          <h2 class="card-title">Todos os usuários</h2>
+          <div id="usersList">
+            <p class="panel-loading">Carregando usuários...</p>
+          </div>
         </div>
       </div>
     </div>
+
+    <!-- aba: utilização (vazia por enquanto) -->
+    <div id="view-usage" class="admin-view">
+      <div class="panel-wrap">
+        <div class="panel-header">
+          <div>
+            <h1 class="panel-title">Utilização</h1>
+            <p class="panel-subtitle">Métricas de uso do sistema</p>
+          </div>
+        </div>
+        <div class="card">
+          <p class="placeholder-view">Em breve.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- aba: critérios do sistema (vazia por enquanto) -->
+    <div id="view-settings" class="admin-view">
+      <div class="panel-wrap">
+        <div class="panel-header">
+          <div>
+            <h1 class="panel-title">Critérios do sistema</h1>
+            <p class="panel-subtitle">Regras e parâmetros do ÍCARO</p>
+          </div>
+        </div>
+        <div class="card">
+          <p class="placeholder-view">Em breve.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- dock de navegação -->
+    <nav id="admin-dock">
+      <div class="dock-panel" id="dockPanel"></div>
+    </nav>
   </div>
 
 <script type="module">
@@ -754,8 +930,8 @@ void main() {
       const user = getUser();
       loginStage.classList.add('hide');
       panel.classList.add('show');
-      panelWelcome.textContent = user ? 'Conectado como ' + user.username : 'Painel de administração do ÍCARO';
-      loadUsers();
+      panelWelcome.textContent = user ? 'Conectado como ' + user.username + ' — escolha uma opção abaixo' : 'Escolha uma opção abaixo para continuar';
+      showView('home');
     }
 
     function showLoginGate() {
@@ -934,6 +1110,123 @@ void main() {
         submitBtn.textContent = defaultText;
       }
     });
+
+    // ============================================================
+    // Troca de abas (views)
+    // ============================================================
+    const VIEWS = ['home', 'users', 'usage', 'settings'];
+
+    function showView(name) {
+      VIEWS.forEach(function (v) {
+        const el = document.getElementById('view-' + v);
+        if (el) el.classList.toggle('active', v === name);
+      });
+      document.querySelectorAll('.dock-item').forEach(function (item) {
+        item.classList.toggle('active', item.getAttribute('data-view') === name);
+      });
+      if (name === 'users') loadUsers();
+    }
+    window.__icaroShowView = showView;
+
+    // ============================================================
+    // DOCK — porta em vanilla JS/CSS do componente Dock (React Bits).
+    // Cada ícone cresce conforme a proximidade do cursor, com uma
+    // mola (spring) simulada por requestAnimationFrame — a mesma
+    // ideia da spring do framer-motion, só que sem a lib.
+    // ============================================================
+    (function initDock() {
+      const DOCK_ITEMS = [
+        {
+          view: 'users',
+          label: 'Usuários',
+          svg: '<circle cx="12" cy="8" r="3.4" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M4.5 20c1.2-4 4-6 7.5-6s6.3 2 7.5 6" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/>',
+        },
+        {
+          view: 'usage',
+          label: 'Utilização',
+          svg: '<path d="M5 19V10M11 19V5M17 19v-6" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"/>',
+        },
+        {
+          view: 'settings',
+          label: 'Critérios do sistema',
+          svg: '<circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M12 3.5v2.4M12 18.1v2.4M20.5 12h-2.4M5.9 12H3.5M17.7 6.3l-1.7 1.7M8 16l-1.7 1.7M17.7 17.7L16 16M8 8 6.3 6.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>',
+        },
+      ];
+
+      const BASE_SIZE = 50;
+      const MAGNIFICATION = 70;
+      const DISTANCE = 200;
+      const SPRING = { mass: 0.1, stiffness: 150, damping: 12 };
+
+      const dockPanel = document.getElementById('dockPanel');
+      const items = [];
+
+      DOCK_ITEMS.forEach(function (def) {
+        const el = document.createElement('div');
+        el.className = 'dock-item';
+        el.setAttribute('data-view', def.view);
+        el.setAttribute('role', 'button');
+        el.setAttribute('tabindex', '0');
+        el.innerHTML =
+          '<svg viewBox="0 0 24 24" fill="none">' + def.svg + '</svg>' +
+          '<span class="dock-label">' + def.label + '</span>';
+        el.addEventListener('click', function () { showView(def.view); });
+        el.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); showView(def.view); }
+        });
+        dockPanel.appendChild(el);
+        items.push({ el: el, size: BASE_SIZE, velocity: 0, target: BASE_SIZE });
+      });
+
+      let mouseX = null;
+
+      dockPanel.addEventListener('mousemove', function (e) {
+        mouseX = e.clientX;
+      });
+      dockPanel.addEventListener('mouseleave', function () {
+        mouseX = null;
+      });
+
+      function updateTargets() {
+        items.forEach(function (item) {
+          if (mouseX === null) {
+            item.target = BASE_SIZE;
+            return;
+          }
+          const rect = item.el.getBoundingClientRect();
+          const centerX = rect.left + rect.width / 2;
+          const dist = mouseX - centerX;
+          // Interpolação triangular: perto do centro = magnificado,
+          // longe (>= DISTANCE) = tamanho base. Mesma curva do
+          // useTransform([-distance,0,distance],[base,mag,base]).
+          const t = Math.max(0, 1 - Math.abs(dist) / DISTANCE);
+          item.target = BASE_SIZE + (MAGNIFICATION - BASE_SIZE) * t;
+        });
+      }
+
+      let lastT = null;
+      function springLoop(t) {
+        requestAnimationFrame(springLoop);
+        if (lastT === null) lastT = t;
+        const dt = Math.min(0.05, (t - lastT) / 1000);
+        lastT = t;
+
+        updateTargets();
+
+        items.forEach(function (item) {
+          // Integração de mola amortecida (semi-implícita).
+          const force = (item.target - item.size) * SPRING.stiffness;
+          const damping = item.velocity * SPRING.damping;
+          const accel = (force - damping) / SPRING.mass;
+          item.velocity += accel * dt;
+          item.size += item.velocity * dt;
+
+          item.el.style.width = item.size + 'px';
+          item.el.style.height = item.size + 'px';
+        });
+      }
+      requestAnimationFrame(springLoop);
+    })();
   })();
 </script>
 

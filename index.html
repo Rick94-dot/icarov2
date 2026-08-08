@@ -925,8 +925,9 @@
 
       if (isValid) {
         window.__icaroWall.showWall('ACESSO GARANTIDO', '#4ade80', function () {
-          // TODO: redirecionar para a próxima página do ÍCARO daqui
-          // (por enquanto o fluxo termina nesta tela de sucesso).
+          setTimeout(function () {
+            window.location.href = 'icaro-globo.html';
+          }, 1400);
         });
       } else {
         window.__icaroWall.showWall('INVÁLIDO', '#ff5c5c', function () {

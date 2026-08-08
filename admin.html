@@ -914,6 +914,25 @@ void main() {
     const createError = document.getElementById('createError');
     const createSuccess = document.getElementById('createSuccess');
 
+    // ============================================================
+    // Troca de abas (views) — precisa vir ANTES do bootstrap() lá
+    // embaixo, porque ele pode chamar showView() de cara se já
+    // existir uma sessão salva.
+    // ============================================================
+    const VIEWS = ['home', 'users', 'usage', 'settings'];
+
+    function showView(name) {
+      VIEWS.forEach(function (v) {
+        const el = document.getElementById('view-' + v);
+        if (el) el.classList.toggle('active', v === name);
+      });
+      document.querySelectorAll('.dock-item').forEach(function (item) {
+        item.classList.toggle('active', item.getAttribute('data-view') === name);
+      });
+      if (name === 'users') loadUsers();
+    }
+    window.__icaroShowView = showView;
+
     function getToken() { return localStorage.getItem('icaro_token'); }
     function getUser() {
       try { return JSON.parse(localStorage.getItem('icaro_user') || 'null'); }
@@ -1147,25 +1166,6 @@ void main() {
         submitBtn.textContent = defaultText;
       }
     });
-
-    // ============================================================
-    // Troca de abas (views)
-    // ============================================================
-    const VIEWS = ['home', 'users', 'usage', 'settings'];
-
-    function showView(name) {
-      VIEWS.forEach(function (v) {
-        const el = document.getElementById('view-' + v);
-        if (el) el.classList.toggle('active', v === name);
-      });
-      document.querySelectorAll('.dock-item').forEach(function (item) {
-        item.classList.toggle('active', item.getAttribute('data-view') === name);
-      });
-      if (name === 'users') loadUsers();
-    }
-    window.__icaroShowView = showView;
-
-    // ============================================================
     // DOCK — porta em vanilla JS/CSS do componente Dock (React Bits).
     // Cada ícone cresce conforme a proximidade do cursor, com uma
     // mola (spring) simulada por requestAnimationFrame — a mesma

@@ -961,9 +961,12 @@
         localStorage.setItem('icaro_token', result.token);
         localStorage.setItem('icaro_user', JSON.stringify(result.user || {}));
 
+        const isAdmin = result.user && result.user.role === 'admin';
+        const destination = isAdmin ? 'admin.html' : 'globo.html';
+
         window.__icaroWall.showWall('ACESSO GARANTIDO', '#4ade80', function () {
           setTimeout(function () {
-            window.location.href = 'globo.html';
+            window.location.href = destination;
           }, 1400);
         });
       } else {

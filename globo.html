@@ -360,6 +360,50 @@
     margin: 0 0 20px;
   }
 
+  .ai-summary-card {
+    padding: 16px 18px;
+    border-radius: 12px;
+    background: rgba(94, 200, 255, 0.05);
+    border: 1px solid rgba(94, 200, 255, 0.18);
+    margin-bottom: 22px;
+  }
+
+  .ai-summary-card .google-subtitle {
+    color: #8fd0ff;
+    margin-bottom: 8px;
+  }
+
+  .ai-summary-text {
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: rgba(255,255,255,0.8);
+    margin: 0 0 12px;
+  }
+
+  .ai-points-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+  }
+
+  .ai-points-col-title {
+    font-size: 10.5px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin: 0 0 6px;
+  }
+
+  .ai-points-col-title.pos { color: #4ade80; }
+  .ai-points-col-title.neg { color: #ff8080; }
+
+  .ai-points-list {
+    margin: 0;
+    padding-left: 16px;
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: rgba(255,255,255,0.7);
+  }
+
   .google-hours {
     margin-bottom: 18px;
   }
@@ -605,6 +649,8 @@
               <span class="google-rating-detail" id="googleRatingDetail"></span>
             </div>
 
+            <p class="google-open-status" id="googleOpenStatus" style="display:none;"></p>
+
             <div class="result-grid google-contact-grid" id="googleContactGrid" style="display:none;">
               <div class="result-item">
                 <span class="result-label">Telefone (Google)</span>
@@ -640,6 +686,12 @@
                 <span class="result-label">Estações de metrô</span>
                 <span class="result-value" id="googleMetro">—</span>
               </div>
+            </div>
+
+            <div class="ai-summary-card" id="aiSummaryCard" style="display:none;">
+              <p class="google-subtitle">Resumo das avaliações (Claude)</p>
+              <p class="ai-summary-text" id="aiSummaryText"></p>
+              <div class="ai-points-grid" id="aiPointsGrid"></div>
             </div>
 
             <p class="google-subtitle">Avaliações no Google</p>
@@ -1502,6 +1554,55 @@ void main() {
     // o endereço já retornados. Se falhar, a seção simplesmente
     // some (nunca quebra a busca principal do CNPJ).
     // ============================================================
+    function formatOpenStatus(abertoAgora) {
+      const el = document.getElementById('googleOpenStatus');
+      if (abertoAgora === true) {
+        el.textContent = 'Aberto agora';
+        el.className = 'google-open-status open';
+        el.style.display = 'block';
+      } else if (abertoAgora === false) {
+        el.textContent = 'Fechado no momento';
+        el.className = 'google-open-status closed';
+        el.style.display = 'block';
+      } else {
+        el.style.display = 'none';
+      }
+    }
+
+    function renderAiSummary(resumoAvaliacoes) {
+      const card = document.getElementById('aiSummaryCard');
+      if (!resumoAvaliacoes) {
+        card.style.display = 'none';
+        return;
+      }
+
+      document.getElementById('aiSummaryText').textContent = resumoAvaliacoes.resumoGeral || '';
+
+      const pointsGrid = document.getElementById('aiPointsGrid');
+      pointsGrid.innerHTML = '';
+
+      const fortes = Array.isArray(resumoAvaliacoes.pontosFortes) ? resumoAvaliacoes.pontosFortes : [];
+      const fracos = Array.isArray(resumoAvaliacoes.pontosFracos) ? resumoAvaliacoes.pontosFracos : [];
+
+      if (fortes.length) {
+        const col = document.createElement('div');
+        col.innerHTML =
+          '<p class="ai-points-col-title pos">Pontos fortes</p>' +
+          '<ul class="ai-points-list">' + fortes.map(function (p) { return '<li>' + p + '</li>'; }).join('') + '</ul>';
+        pointsGrid.appendChild(col);
+      }
+
+      if (fracos.length) {
+        const col = document.createElement('div');
+        col.innerHTML =
+          '<p class="ai-points-col-title neg">Pontos de atenção</p>' +
+          '<ul class="ai-points-list">' + fracos.map(function (p) { return '<li>' + p + '</li>'; }).join('') + '</ul>';
+        pointsGrid.appendChild(col);
+      }
+
+      card.style.display = 'block';
+    }
+
     function renderReviews(avaliacoes) {
       const wrap = document.getElementById('googleReviews');
       wrap.innerHTML = '';
@@ -1599,6 +1700,8 @@ void main() {
       transportGrid.style.display = 'none';
       document.getElementById('googleHours').style.display = 'none';
       document.getElementById('googleAccessRow').style.display = 'none';
+      document.getElementById('googleOpenStatus').style.display = 'none';
+      document.getElementById('aiSummaryCard').style.display = 'none';
       document.getElementById('googleReviews').innerHTML = '';
       document.getElementById('photosGrid').innerHTML = '';
 
@@ -1626,6 +1729,8 @@ void main() {
           ratingRow.style.display = 'flex';
         }
 
+        formatOpenStatus(payload.abertoAgora);
+
         if (payload.telefone || payload.site) {
           const telEl = document.getElementById('googleTelefone');
           const siteEl = document.getElementById('googleSite');
@@ -1640,6 +1745,7 @@ void main() {
 
         renderHours(payload.horarioFuncionamento);
         renderAccessibility(payload.acessibilidade);
+        renderAiSummary(payload.resumoAvaliacoes);
 
         const t = payload.transporte || {};
         if (t.pontosOnibus != null || t.estacoesTrem != null || t.estacoesMetro != null) {

@@ -1545,7 +1545,7 @@ void main() {
       formCard.style.display = 'none';
       resultCard.style.display = 'block';
 
-      enrichWithGoogle(data.nomeFantasia || data.razaoSocial, data.endereco);
+      enrichWithGoogle(data.nomeFantasia || data.razaoSocial, data.enderecoMunicipio, data.enderecoUf);
     }
 
     // ============================================================
@@ -1679,7 +1679,7 @@ void main() {
       wrap.style.display = 'block';
     }
 
-    async function enrichWithGoogle(nome, endereco) {
+    async function enrichWithGoogle(nome, municipio, uf) {
       const section = document.getElementById('googleSection');
       const loading = document.getElementById('googleLoading');
       const content = document.getElementById('googleContent');
@@ -1709,7 +1709,8 @@ void main() {
 
       try {
         const params = new URLSearchParams({ nome: nome });
-        if (endereco && endereco !== 'Dado não localizado') params.set('endereco', endereco);
+        if (municipio && municipio !== 'Dado não localizado') params.set('municipio', municipio);
+        if (uf && uf !== 'Dado não localizado') params.set('uf', uf);
 
         const res = await fetch(API_BASE_URL + '/api/google-places?' + params.toString(), {
           headers: { Authorization: 'Bearer ' + token },

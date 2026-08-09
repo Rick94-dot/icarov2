@@ -332,8 +332,93 @@
   .google-open-status.open { color: #4ade80; }
   .google-open-status.closed { color: #ff6b6b; }
 
-  .google-transport-grid {
-    margin-bottom: 22px !important;
+  .google-contact-grid {
+    margin-bottom: 18px !important;
+  }
+
+  .google-contact-grid a {
+    color: var(--white);
+    text-decoration: underline;
+    text-decoration-color: rgba(255,255,255,0.3);
+  }
+
+  .google-hours {
+    margin-bottom: 18px;
+  }
+
+  .google-hours-list {
+    list-style: none;
+    margin: 6px 0 0;
+    padding: 0;
+    font-size: 12.5px;
+    color: rgba(255,255,255,0.75);
+    line-height: 1.7;
+  }
+
+  .google-access-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .access-badge {
+    display: none;
+    padding: 4px 11px;
+    border-radius: 999px;
+    font-size: 11px;
+    letter-spacing: 0.2px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    color: rgba(255,255,255,0.75);
+  }
+
+  .access-badge.show { display: inline-block; }
+  .access-badge.yes { border-color: rgba(74,222,128,0.4); color: #4ade80; }
+  .access-badge.no { border-color: rgba(255,107,107,0.35); color: #ff8080; }
+
+  .google-reviews {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .review-card {
+    padding: 12px 14px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+  }
+
+  .review-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 5px;
+  }
+
+  .review-author {
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--white);
+  }
+
+  .review-stars {
+    font-size: 11px;
+    color: #ffcb5c;
+  }
+
+  .review-time {
+    font-size: 10.5px;
+    color: rgba(255,255,255,0.4);
+    margin-left: 6px;
+  }
+
+  .review-text {
+    font-size: 12px;
+    line-height: 1.5;
+    color: rgba(255,255,255,0.7);
   }
 
   .photos-grid {
@@ -490,7 +575,7 @@
           </div>
         </div>
 
-        <!-- Dados do Google (nota, avaliações, horário, transporte, fotos) -->
+        <!-- Dados do Google (nota, avaliações, acessibilidade, fotos) -->
         <div class="google-section" id="googleSection" style="display:none;">
           <div class="google-divider"></div>
 
@@ -502,22 +587,29 @@
               <span class="google-rating-detail" id="googleRatingDetail"></span>
             </div>
 
-            <p class="google-open-status" id="googleOpenStatus" style="display:none;"></p>
-
-            <div class="result-grid google-transport-grid" id="googleTransportGrid" style="display:none;">
+            <div class="result-grid google-contact-grid" id="googleContactGrid" style="display:none;">
               <div class="result-item">
-                <span class="result-label">Pontos de ônibus</span>
-                <span class="result-value" id="googleOnibus">—</span>
+                <span class="result-label">Telefone (Google)</span>
+                <span class="result-value" id="googleTelefone">—</span>
               </div>
               <div class="result-item">
-                <span class="result-label">Estações de trem</span>
-                <span class="result-value" id="googleTrem">—</span>
-              </div>
-              <div class="result-item">
-                <span class="result-label">Estações de metrô</span>
-                <span class="result-value" id="googleMetro">—</span>
+                <span class="result-label">Site</span>
+                <span class="result-value" id="googleSite">—</span>
               </div>
             </div>
+
+            <div class="google-hours" id="googleHours" style="display:none;">
+              <span class="result-label">Horário de funcionamento</span>
+              <ul class="google-hours-list" id="googleHoursList"></ul>
+            </div>
+
+            <div class="google-access-row" id="googleAccessRow" style="display:none;">
+              <span class="access-badge" id="accessEntrada"></span>
+              <span class="access-badge" id="accessEstacionamento"></span>
+              <span class="access-badge" id="accessBanheiro"></span>
+            </div>
+
+            <div class="google-reviews" id="googleReviews"></div>
 
             <div class="photos-grid" id="photosGrid"></div>
           </div>
@@ -1375,20 +1467,150 @@ void main() {
     // o endereço já retornados. Se falhar, a seção simplesmente
     // some (nunca quebra a busca principal do CNPJ).
     // ============================================================
-    function formatOpeningHoursStatus(abertoAgora) {
-      const el = document.getElementById('googleOpenStatus');
-      if (abertoAgora === true) {
-        el.textContent = 'Aberto agora';
-        el.className = 'google-open-status open';
-        el.style.display = 'block';
-      } else if (abertoAgora === false) {
-        el.textContent = 'Fechado no momento';
-        el.className = 'google-open-status closed';
-        el.style.display = 'block';
-      } else {
-        el.style.display = 'none';
+    function renderReviews(avaliacoes) {
+      const wrap = document.getElementById('googleReviews');
+      wrap.innerHTML = '';
+      if (!Array.isArray(avaliacoes) || avaliacoes.length === 0) return;
+
+      avaliacoes.forEach(function (r) {
+        const card = document.createElement('div');
+        card.className = 'review-card';
+
+        const stars = r.nota != null ? '★'.repeat(Math.round(r.nota)) + '☆'.repeat(5 - Math.round(r.nota)) : '';
+
+        const head = document.createElement('div');
+        head.className = 'review-head';
+        head.innerHTML =
+          '<span class="review-author">' + (r.autor || 'Anônimo') + '</span>' +
+          '<span><span class="review-stars">' + stars + '</span>' +
+          (r.dataRelativa ? '<span class="review-time">' + r.dataRelativa + '</span>' : '') +
+          '</span>';
+        card.appendChild(head);
+
+        if (r.texto) {
+          const p = document.createElement('p');
+          p.className = 'review-text';
+          p.textContent = r.texto;
+          card.appendChild(p);
+        }
+
+        wrap.appendChild(card);
+      });
+    }
+
+    function renderAccessibility(acessibilidade) {
+      const row = document.getElementById('googleAccessRow');
+      const items = [
+        { id: 'accessEntrada', label: 'Entrada acessível', value: acessibilidade && acessibilidade.entradaAcessivel },
+        { id: 'accessEstacionamento', label: 'Estacionamento acessível', value: acessibilidade && acessibilidade.estacionamentoAcessivel },
+        { id: 'accessBanheiro', label: 'Banheiro acessível', value: acessibilidade && acessibilidade.banheiroAcessivel },
+      ];
+
+      let anyShown = false;
+      items.forEach(function (item) {
+        const el = document.getElementById(item.id);
+        if (item.value === true) {
+          el.textContent = '✓ ' + item.label;
+          el.className = 'access-badge show yes';
+          anyShown = true;
+        } else if (item.value === false) {
+          el.textContent = '✕ ' + item.label;
+          el.className = 'access-badge show no';
+          anyShown = true;
+        } else {
+          el.className = 'access-badge';
+        }
+      });
+      row.style.display = anyShown ? 'flex' : 'none';
+    }
+
+    function renderHours(horarioFuncionamento) {
+      const wrap = document.getElementById('googleHours');
+      const list = document.getElementById('googleHoursList');
+      list.innerHTML = '';
+      if (!Array.isArray(horarioFuncionamento) || horarioFuncionamento.length === 0) {
+        wrap.style.display = 'none';
+        return;
+      }
+      horarioFuncionamento.forEach(function (linha) {
+        const li = document.createElement('li');
+        li.textContent = linha;
+        list.appendChild(li);
+      });
+      wrap.style.display = 'block';
+    }
+
+    async function enrichWithGoogle(nome, endereco) {
+      const section = document.getElementById('googleSection');
+      const loading = document.getElementById('googleLoading');
+      const content = document.getElementById('googleContent');
+      const ratingRow = document.getElementById('googleRatingRow');
+      const contactGrid = document.getElementById('googleContactGrid');
+
+      if (!nome) {
+        section.style.display = 'none';
+        return;
+      }
+
+      section.style.display = 'block';
+      loading.style.display = 'block';
+      content.style.display = 'none';
+      ratingRow.style.display = 'none';
+      contactGrid.style.display = 'none';
+      document.getElementById('googleHours').style.display = 'none';
+      document.getElementById('googleAccessRow').style.display = 'none';
+      document.getElementById('googleReviews').innerHTML = '';
+      document.getElementById('photosGrid').innerHTML = '';
+
+      const token = localStorage.getItem('icaro_token');
+
+      try {
+        const params = new URLSearchParams({ nome: nome });
+        if (endereco && endereco !== 'Dado não localizado') params.set('endereco', endereco);
+
+        const res = await fetch(API_BASE_URL + '/api/google-places?' + params.toString(), {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        const payload = await res.json().catch(function () { return {}; });
+
+        if (!res.ok) throw new Error(payload.error || 'Não encontrado no Google.');
+
+        loading.style.display = 'none';
+        content.style.display = 'block';
+
+        if (payload.nota != null) {
+          document.getElementById('googleRatingValue').textContent = '★ ' + payload.nota;
+          document.getElementById('googleRatingDetail').textContent = payload.totalAvaliacoes != null
+            ? '(' + payload.totalAvaliacoes + ' avaliações no Google)'
+            : '';
+          ratingRow.style.display = 'flex';
+        }
+
+        if (payload.telefone || payload.site) {
+          const telEl = document.getElementById('googleTelefone');
+          const siteEl = document.getElementById('googleSite');
+          telEl.textContent = payload.telefone || 'Dado não localizado';
+          if (payload.site) {
+            siteEl.innerHTML = '<a href="' + payload.site + '" target="_blank" rel="noopener">' + payload.site + '</a>';
+          } else {
+            siteEl.textContent = 'Dado não localizado';
+          }
+          contactGrid.style.display = 'grid';
+        }
+
+        renderHours(payload.horarioFuncionamento);
+        renderAccessibility(payload.acessibilidade);
+        renderReviews(payload.avaliacoes);
+        renderPhotos(payload.fotos);
+      } catch (err) {
+        console.error('[ÍCARO] enriquecimento do Google falhou:', err.message);
+        section.style.display = 'none';
       }
     }
+
+    document.getElementById('photoLightbox').addEventListener('click', function () {
+      this.classList.remove('show');
+    });
 
     function renderPhotos(fotos) {
       const grid = document.getElementById('photosGrid');
@@ -1429,69 +1651,6 @@ void main() {
         grid.appendChild(card);
       });
     }
-
-    async function enrichWithGoogle(nome, endereco) {
-      const section = document.getElementById('googleSection');
-      const loading = document.getElementById('googleLoading');
-      const content = document.getElementById('googleContent');
-      const ratingRow = document.getElementById('googleRatingRow');
-      const transportGrid = document.getElementById('googleTransportGrid');
-
-      if (!nome || !endereco || endereco === 'Dado não localizado') {
-        section.style.display = 'none';
-        return;
-      }
-
-      section.style.display = 'block';
-      loading.style.display = 'block';
-      content.style.display = 'none';
-      ratingRow.style.display = 'none';
-      transportGrid.style.display = 'none';
-      document.getElementById('googleOpenStatus').style.display = 'none';
-      document.getElementById('photosGrid').innerHTML = '';
-
-      const token = localStorage.getItem('icaro_token');
-
-      try {
-        const params = new URLSearchParams({ nome: nome, endereco: endereco });
-        const res = await fetch(API_BASE_URL + '/api/google-places?' + params.toString(), {
-          headers: { Authorization: 'Bearer ' + token },
-        });
-        const payload = await res.json().catch(function () { return {}; });
-
-        if (!res.ok) throw new Error(payload.error || 'Não encontrado no Google.');
-
-        loading.style.display = 'none';
-        content.style.display = 'block';
-
-        if (payload.nota != null) {
-          document.getElementById('googleRatingValue').textContent = '★ ' + payload.nota;
-          document.getElementById('googleRatingDetail').textContent = payload.totalAvaliacoes != null
-            ? '(' + payload.totalAvaliacoes + ' avaliações no Google)'
-            : '';
-          ratingRow.style.display = 'flex';
-        }
-
-        formatOpeningHoursStatus(payload.abertoAgora);
-
-        const t = payload.transporte || {};
-        if (t.pontosOnibus != null || t.estacoesTrem != null || t.estacoesMetro != null) {
-          document.getElementById('googleOnibus').textContent = t.pontosOnibus != null ? t.pontosOnibus : 'Dado não localizado';
-          document.getElementById('googleTrem').textContent = t.estacoesTrem != null ? t.estacoesTrem : 'Dado não localizado';
-          document.getElementById('googleMetro').textContent = t.estacoesMetro != null ? t.estacoesMetro : 'Dado não localizado';
-          transportGrid.style.display = 'grid';
-        }
-
-        renderPhotos(payload.fotos);
-      } catch (err) {
-        console.error('[ÍCARO] enriquecimento do Google falhou:', err.message);
-        section.style.display = 'none';
-      }
-    }
-
-    document.getElementById('photoLightbox').addEventListener('click', function () {
-      this.classList.remove('show');
-    });
 
     btn.addEventListener('click', async function () {
       if (btn.disabled) return;

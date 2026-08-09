@@ -342,6 +342,24 @@
     text-decoration-color: rgba(255,255,255,0.3);
   }
 
+  .google-transport-grid {
+    margin-bottom: 22px !important;
+  }
+
+  .google-subtitle {
+    font-size: 11px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.45);
+    margin: 0 0 10px;
+  }
+
+  .google-empty {
+    font-size: 12px;
+    color: rgba(255,255,255,0.4);
+    margin: 0 0 20px;
+  }
+
   .google-hours {
     margin-bottom: 18px;
   }
@@ -609,8 +627,25 @@
               <span class="access-badge" id="accessBanheiro"></span>
             </div>
 
+            <div class="result-grid google-transport-grid" id="googleTransportGrid" style="display:none;">
+              <div class="result-item">
+                <span class="result-label">Pontos de ônibus</span>
+                <span class="result-value" id="googleOnibus">—</span>
+              </div>
+              <div class="result-item">
+                <span class="result-label">Estações de trem</span>
+                <span class="result-value" id="googleTrem">—</span>
+              </div>
+              <div class="result-item">
+                <span class="result-label">Estações de metrô</span>
+                <span class="result-value" id="googleMetro">—</span>
+              </div>
+            </div>
+
+            <p class="google-subtitle">Avaliações no Google</p>
             <div class="google-reviews" id="googleReviews"></div>
 
+            <p class="google-subtitle">Fotos</p>
             <div class="photos-grid" id="photosGrid"></div>
           </div>
         </div>
@@ -1470,7 +1505,10 @@ void main() {
     function renderReviews(avaliacoes) {
       const wrap = document.getElementById('googleReviews');
       wrap.innerHTML = '';
-      if (!Array.isArray(avaliacoes) || avaliacoes.length === 0) return;
+      if (!Array.isArray(avaliacoes) || avaliacoes.length === 0) {
+        wrap.innerHTML = '<p class="google-empty">Nenhuma avaliação com texto encontrada no Google.</p>';
+        return;
+      }
 
       avaliacoes.forEach(function (r) {
         const card = document.createElement('div');
@@ -1546,6 +1584,7 @@ void main() {
       const content = document.getElementById('googleContent');
       const ratingRow = document.getElementById('googleRatingRow');
       const contactGrid = document.getElementById('googleContactGrid');
+      const transportGrid = document.getElementById('googleTransportGrid');
 
       if (!nome) {
         section.style.display = 'none';
@@ -1557,6 +1596,7 @@ void main() {
       content.style.display = 'none';
       ratingRow.style.display = 'none';
       contactGrid.style.display = 'none';
+      transportGrid.style.display = 'none';
       document.getElementById('googleHours').style.display = 'none';
       document.getElementById('googleAccessRow').style.display = 'none';
       document.getElementById('googleReviews').innerHTML = '';
@@ -1600,6 +1640,15 @@ void main() {
 
         renderHours(payload.horarioFuncionamento);
         renderAccessibility(payload.acessibilidade);
+
+        const t = payload.transporte || {};
+        if (t.pontosOnibus != null || t.estacoesTrem != null || t.estacoesMetro != null) {
+          document.getElementById('googleOnibus').textContent = t.pontosOnibus != null ? t.pontosOnibus : 'Dado não localizado';
+          document.getElementById('googleTrem').textContent = t.estacoesTrem != null ? t.estacoesTrem : 'Dado não localizado';
+          document.getElementById('googleMetro').textContent = t.estacoesMetro != null ? t.estacoesMetro : 'Dado não localizado';
+          transportGrid.style.display = 'grid';
+        }
+
         renderReviews(payload.avaliacoes);
         renderPhotos(payload.fotos);
       } catch (err) {
@@ -1615,7 +1664,10 @@ void main() {
     function renderPhotos(fotos) {
       const grid = document.getElementById('photosGrid');
       grid.innerHTML = '';
-      if (!Array.isArray(fotos) || fotos.length === 0) return;
+      if (!Array.isArray(fotos) || fotos.length === 0) {
+        grid.innerHTML = '<p class="google-empty">Nenhuma foto encontrada no Google.</p>';
+        return;
+      }
 
       fotos.forEach(function (foto) {
         const card = document.createElement('div');

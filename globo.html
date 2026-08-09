@@ -221,6 +221,76 @@
     cursor: not-allowed;
   }
 
+  .cnpj-lookup-error {
+    display: none;
+    margin: 14px 2px 0;
+    font-size: 12px;
+    color: #ff6b6b;
+    text-align: left;
+  }
+  .cnpj-lookup-error.show { display: block; }
+
+  /* ---------- cartão de resultado ---------- */
+  .cnpj-result-card {
+    max-width: 480px;
+    text-align: left;
+  }
+
+  .result-source {
+    font-size: 10.5px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+    margin: 0 0 10px;
+  }
+
+  .result-name {
+    font-family: 'Fraunces', Georgia, serif;
+    font-weight: 500;
+    font-size: 22px;
+    color: var(--white);
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+
+  .result-fantasia {
+    font-size: 13px;
+    color: rgba(255,255,255,0.55);
+    margin: 0 0 22px;
+  }
+
+  .result-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px 20px;
+    margin-bottom: 26px;
+  }
+
+  .result-item-wide { grid-column: 1 / -1; }
+
+  .result-label {
+    display: block;
+    font-size: 10px;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.45);
+    margin-bottom: 4px;
+  }
+
+  .result-value {
+    display: block;
+    font-size: 13.5px;
+    color: var(--white);
+    line-height: 1.4;
+  }
+
+  .cnpj-btn-secondary {
+    background: transparent;
+    color: var(--white);
+    border: 1px solid rgba(255,255,255,0.18);
+  }
+  .cnpj-btn-secondary:hover { background: rgba(255,255,255,0.06); opacity: 1; }
+
   @media (prefers-reduced-motion: reduce) {
     #zoom-wrap { transition: opacity 0.6s ease; transform: none !important; }
     #cursor { animation: none; opacity: 1; }
@@ -270,7 +340,7 @@
     </div>
 
     <div id="cnpj-stage">
-      <div class="cnpj-card">
+      <div class="cnpj-card" id="cnpjFormCard">
         <h2 class="cnpj-title">Consultar prestador</h2>
         <p class="cnpj-subtitle">Digite o CNPJ para continuar</p>
         <div class="cnpj-field">
@@ -279,6 +349,50 @@
           <p class="cnpj-error" id="cnpjError">CNPJ inválido.</p>
         </div>
         <button type="button" class="cnpj-btn" id="cnpjBtn" disabled>Buscar</button>
+        <p class="cnpj-lookup-error" id="cnpjLookupError"></p>
+      </div>
+
+      <div class="cnpj-card cnpj-result-card" id="cnpjResultCard" style="display:none;">
+        <p class="result-source" id="resultSource"></p>
+        <h2 class="result-name" id="resultRazaoSocial">—</h2>
+        <p class="result-fantasia" id="resultNomeFantasia"></p>
+
+        <div class="result-grid">
+          <div class="result-item">
+            <span class="result-label">Situação</span>
+            <span class="result-value" id="resultSituacao">—</span>
+          </div>
+          <div class="result-item">
+            <span class="result-label">Abertura</span>
+            <span class="result-value" id="resultAbertura">—</span>
+          </div>
+          <div class="result-item">
+            <span class="result-label">Porte</span>
+            <span class="result-value" id="resultPorte">—</span>
+          </div>
+          <div class="result-item">
+            <span class="result-label">Natureza jurídica</span>
+            <span class="result-value" id="resultNatureza">—</span>
+          </div>
+          <div class="result-item result-item-wide">
+            <span class="result-label">Atividade principal</span>
+            <span class="result-value" id="resultAtividade">—</span>
+          </div>
+          <div class="result-item result-item-wide">
+            <span class="result-label">Endereço</span>
+            <span class="result-value" id="resultEndereco">—</span>
+          </div>
+          <div class="result-item">
+            <span class="result-label">Telefone</span>
+            <span class="result-value" id="resultTelefone">—</span>
+          </div>
+          <div class="result-item">
+            <span class="result-label">E-mail</span>
+            <span class="result-value" id="resultEmail">—</span>
+          </div>
+        </div>
+
+        <button type="button" class="cnpj-btn cnpj-btn-secondary" id="cnpjNewSearchBtn">Nova busca</button>
       </div>
     </div>
   </div>
@@ -292,319 +406,290 @@
   // ============================================================
   import * as THREE from 'https://esm.sh/three@0.160.0';
   import { geoEquirectangular, geoPath } from 'https://esm.sh/d3-geo@3';
-  import { Renderer, Camera, Mesh, Plane, Program, RenderTarget as OglRenderTarget } from 'https://esm.sh/ogl@1.0.6';
+  import { Renderer, Camera, Mesh, Plane, Program, Triangle, RenderTarget as OglRenderTarget } from 'https://esm.sh/ogl@1.0.6';
 
   // ============================================================
-  // CHROMATIC WAVES — porta em vanilla JS/OGL do componente
-  // Originkit. Roda ruído Perlin animado num render target e usa
-  // o brilho resultante para desenhar uma trama de pontos (efeito
-  // "halftone"). Com a paleta padrão (branco sobre preto) fica
-  // como o fundo de pontos pulsantes do ÍCARO.
+  // FUNDO — porta em vanilla JS/OGL do Ferrofluid (React Bits),
+  // igual ao usado no admin.html e no index.html, pra manter o
+  // mesmo visual em todas as páginas do ÍCARO.
   // ============================================================
-  function initChromaticBg(container) {
-    const perlinVertexShader = `#version 300 es
-in vec2 uv;
-in vec2 position;
-out vec2 vUv;
-void main() {
-  vUv = uv;
-  gl_Position = vec4(position, 0., 1.);
-}`;
+const MAX_COLORS = 8;
 
-    const perlinFragmentShader = `#version 300 es
-precision mediump float;
-uniform float uFrequency;
-uniform float uTime;
-uniform float uSpeed;
-uniform float uValue;
-uniform vec2 uResolution;
-in vec2 vUv;
-out vec4 fragColor;
-
-vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-vec4 permute(vec4 x) { return mod289(((x * 34.0) + 1.0) * x); }
-vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
-
-float snoise(vec3 v) {
-  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
-  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
-  vec3 i  = floor(v + dot(v, C.yyy));
-  vec3 x0 = v - i + dot(i, C.xxx);
-  vec3 g = step(x0.yzx, x0.xyz);
-  vec3 l = 1.0 - g;
-  vec3 i1 = min( g.xyz, l.zxy );
-  vec3 i2 = max( g.xyz, l.zxy );
-  vec3 x1 = x0 - i1 + C.xxx;
-  vec3 x2 = x0 - i2 + C.yyy;
-  vec3 x3 = x0 - D.yyy;
-  i = mod289(i);
-  vec4 p = permute( permute( permute(
-             i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
-           + i.y + vec4(0.0, i1.y, i2.y, 1.0 ))
-           + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
-  float n_ = 0.142857142857;
-  vec3  ns = n_ * D.wyz - D.xzx;
-  vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
-  vec4 x_ = floor(j * ns.z);
-  vec4 y_ = floor(j - 7.0 * x_ );
-  vec4 x = x_ *ns.x + ns.yyyy;
-  vec4 y = y_ *ns.x + ns.yyyy;
-  vec4 h = 1.0 - abs(x) - abs(y);
-  vec4 b0 = vec4( x.xy, y.xy );
-  vec4 b1 = vec4( x.zw, y.zw );
-  vec4 s0 = floor(b0)*2.0 + 1.0;
-  vec4 s1 = floor(b1)*2.0 + 1.0;
-  vec4 sh = -step(h, vec4(0.0));
-  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
-  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
-  vec3 p0 = vec3(a0.xy,h.x);
-  vec3 p1 = vec3(a0.zw,h.y);
-  vec3 p2 = vec3(a1.xy,h.z);
-  vec3 p3 = vec3(a1.zw,h.w);
-  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2,p2), dot(p3,p3)));
-  p0 *= norm.x;
-  p1 *= norm.y;
-  p2 *= norm.z;
-  p3 *= norm.w;
-  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
-  m = m * m;
-  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3) ) );
-}
-
-vec3 hsv2rgb(vec3 c) {
-  vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
-  vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
-  return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
-}
-
-void main() {
-  vec2 uv = vUv;
-  float aspect = uResolution.x / max(uResolution.y, 1.0);
-  uv = (uv - 0.5) * vec2(aspect, 1.0) + 0.5;
-  float hue = abs(snoise(vec3(uv * uFrequency, uTime * uSpeed)));
-  vec3 rainbowColor = hsv2rgb(vec3(hue, 1.0, uValue));
-  fragColor = vec4(rainbowColor, 1.0);
-}`;
-
-    const dotVertexShader = `#version 300 es
-in vec2 uv;
-in vec2 position;
-out vec2 vUv;
-void main() {
-  vUv = uv;
-  gl_Position = vec4(position, 0., 1.);
-}`;
-
-    const dotFragmentShader = `#version 300 es
-precision highp float;
-uniform vec2 uResolution;
-uniform sampler2D uTexture;
-uniform int uPaletteCount;
-uniform vec3 uPalette[10];
-uniform float uPaletteAlpha[10];
-uniform float uCellSize;
-uniform float uGamma;
-uniform float uPaletteBias;
-out vec4 fragColor;
-
-void main() {
-  vec2 pix = gl_FragCoord.xy;
-  float cell = max(uCellSize, 1.0);
-
-  vec2 cellIdx = floor(pix / cell);
-  vec2 cellCenter = (cellIdx + 0.5) * cell;
-  vec3 col = texture(uTexture, cellCenter / uResolution.xy).rgb;
-  float gray = 0.3 * col.r + 0.59 * col.g + 0.11 * col.b;
-  gray = pow(clamp(gray, 0.0001, 1.0), uGamma);
-
-  vec2 cellUV = fract(pix / cell) - 0.5;
-  float dist = length(cellUV);
-  float radius = clamp(gray + uPaletteBias, 0.0, 1.0) * 0.5;
-  float aa = fwidth(dist) + 1e-4;
-  float mark = 1.0 - smoothstep(radius - aa, radius + aa, dist);
-
-  float g2 = clamp(gray + uPaletteBias, 0.0, 1.0);
-  int cnt = max(uPaletteCount, 1);
-  vec3 dotCol;
-  float dotOpacity;
-  if (cnt <= 1) {
-    dotCol = uPalette[0];
-    dotOpacity = uPaletteAlpha[0];
-  } else {
-    float scaled = g2 * float(cnt - 1);
-    int seg = int(floor(scaled));
-    seg = clamp(seg, 0, cnt - 2);
-    float f = clamp(scaled - float(seg), 0.0, 1.0);
-    dotCol = mix(uPalette[seg], uPalette[seg + 1], f);
-    dotOpacity = mix(uPaletteAlpha[seg], uPaletteAlpha[seg + 1], f);
+  function hexToRGB(hex) {
+    const c = hex.replace('#', '').padEnd(6, '0');
+    return [
+      parseInt(c.slice(0, 2), 16) / 255,
+      parseInt(c.slice(2, 4), 16) / 255,
+      parseInt(c.slice(4, 6), 16) / 255,
+    ];
   }
-  fragColor = vec4(dotCol, mark * dotOpacity);
-}`;
 
-    // ---- Configuração (padrões do componente) ----
+  function prepColors(input) {
+    const base = (input && input.length ? input : ['#ffffff', '#ffffff', '#ffffff']).slice(0, MAX_COLORS);
+    const count = base.length;
+    const arr = [];
+    for (let i = 0; i < MAX_COLORS; i++) arr.push(hexToRGB(base[Math.min(i, base.length - 1)]));
+    return { arr, count };
+  }
+
+  function flowVec(d) {
+    switch (d) {
+      case 'up': return [0, 1];
+      case 'down': return [0, -1];
+      case 'left': return [-1, 0];
+      case 'right': return [1, 0];
+      default: return [0, -1];
+    }
+  }
+
+  const vertex = `
+attribute vec2 position;
+attribute vec2 uv;
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = vec4(position, 0.0, 1.0);
+}
+`;
+
+  const fragment = `
+precision highp float;
+
+uniform vec3  iResolution;
+uniform vec2  iMouse;
+uniform float iTime;
+
+uniform vec3  uColor0;
+uniform vec3  uColor1;
+uniform vec3  uColor2;
+uniform vec3  uColor3;
+uniform vec3  uColor4;
+uniform vec3  uColor5;
+uniform vec3  uColor6;
+uniform vec3  uColor7;
+uniform int   uColorCount;
+
+uniform vec2  uFlow;
+uniform float uSpeed;
+uniform float uScale;
+uniform float uTurbulence;
+uniform float uFluidity;
+uniform float uRimWidth;
+uniform float uSharpness;
+uniform float uShimmer;
+uniform float uGlow;
+uniform float uOpacity;
+uniform float uMouseEnabled;
+uniform float uMouseStrength;
+uniform float uMouseRadius;
+
+varying vec2 vUv;
+
+#define PI 3.14159265
+
+vec3 palette(float h) {
+  int count = uColorCount;
+  if (count < 1) count = 1;
+  int idx = int(floor(clamp(h, 0.0, 0.999999) * float(count)));
+  if (idx <= 0) return uColor0;
+  if (idx == 1) return uColor1;
+  if (idx == 2) return uColor2;
+  if (idx == 3) return uColor3;
+  if (idx == 4) return uColor4;
+  if (idx == 5) return uColor5;
+  if (idx == 6) return uColor6;
+  return uColor7;
+}
+
+float hash(vec3 p3) {
+  p3 = fract(p3 * 0.1031);
+  p3 += dot(p3, p3.zyx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
+
+float smin(float a, float b, float k) {
+  float r = exp2(-a / k) + exp2(-b / k);
+  return -k * log2(r);
+}
+
+float sinlerp(float a, float b, float w) {
+  return mix(a, b, (sin(w * PI - PI / 2.0) + 1.0) / 2.0);
+}
+
+float vn(vec2 p, float s, float seed) {
+  vec2 cellp = floor(p / s);
+  vec2 relp = mod(p, s);
+  float g1 = hash(vec3(cellp, seed));
+  float g2 = hash(vec3(cellp.x + 1.0, cellp.y, seed));
+  float g3 = hash(vec3(cellp.x + 1.0, cellp.y + 1.0, seed));
+  float g4 = hash(vec3(cellp.x, cellp.y + 1.0, seed));
+  float bx = sinlerp(g1, g2, relp.x / s);
+  float tx = sinlerp(g4, g3, relp.x / s);
+  return sinlerp(bx, tx, relp.y / s);
+}
+
+float dbn(vec2 p, float s, float seed) {
+  float o = s / 2.0;
+  float n0 = vn(p, s, seed);
+  float n1 = vn(p + vec2(o, o), s, seed + 0.1);
+  float n2 = vn(p + vec2(-o, o), s, seed + 0.2);
+  float n3 = vn(p + vec2(o, -o), s, seed + 0.3);
+  float n4 = vn(p + vec2(-o, -o), s, seed + 0.4);
+  return (2.0 * n0 + 1.5 * n1 + 1.25 * n2 + 1.125 * n3 + n4) / 7.0;
+}
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+  float ref = 700.0 / max(uScale, 0.05);
+  vec2 p = fragCoord / iResolution.y * ref;
+
+  float spd = 200.0 * uSpeed;
+  float t = iTime;
+
+  vec2 dir = uFlow;
+  vec2 perp = vec2(-dir.y, dir.x);
+
+  float distort1 = vn(p + perp * (t * spd), 60.0, 10.0) * 50.0 * uTurbulence;
+  float distort2 = vn(p - perp * (t * spd), 120.0, 15.0) * 100.0 * uTurbulence;
+
+  float peaks = dbn(p + distort1 + dir * (t * spd * 0.5), 40.0, 1.0);
+  float peaks2 = dbn(p + distort2 - dir * (t * spd * 0.5), 40.0, 0.0);
+
+  float mapeaks = smin(peaks, peaks2, max(uFluidity, 0.001));
+
+  float mGlow = 0.0;
+  if (uMouseEnabled > 0.5) {
+    vec2 mp = iMouse / iResolution.y * ref;
+    float md = length(p - mp) / ref;
+    float rr = max(uMouseRadius, 0.02);
+    mGlow = exp(-md * md / (rr * rr)) * uMouseStrength;
+  }
+
+  float band = (uRimWidth - abs((mapeaks - 0.4) * 2.0)) * 5.0;
+  float ltn = clamp(band - vn(p + dir * (t * spd * 0.5), 60.0, 12.0) * uShimmer, 0.0, 1.0);
+  ltn = pow(ltn, uSharpness) * uGlow;
+  ltn *= clamp(1.0 - mGlow, 0.0, 1.0);
+
+  float h = clamp(0.5 + (peaks - peaks2) * 0.8, 0.0, 1.0);
+  vec3 col = palette(h);
+
+  vec3 outc = col * ltn;
+  float a = clamp(max(outc.r, max(outc.g, outc.b)), 0.0, 1.0);
+  fragColor = vec4(outc, a * uOpacity);
+}
+
+void main() {
+  vec4 color;
+  mainImage(color, vUv * iResolution.xy);
+  gl_FragColor = color;
+}
+`;
+
+  function initFerrofluid(canvas) {
     const CFG = {
-      frequency: 1,
-      speed: 4,
-      bgColor: '#000000',
-      colors: ['#ffffff'],
-      cellSize: 34,
-      gamma: 6,
-      paletteBias: -3,
+      colors: ['#ffffff', '#ffffff', '#ffffff'],
+      speed: 0.5,
+      scale: 1.6,
+      turbulence: 1,
+      fluidity: 0.1,
+      rimWidth: 0.2,
+      sharpness: 2.5,
+      shimmer: 1.5,
+      glow: 2,
+      flowDirection: 'down',
+      opacity: 1,
+      mouseInteraction: true,
+      mouseStrength: 1,
+      mouseRadius: 0.35,
+      mouseDampening: 0.15,
     };
 
-    function parseColorToRgba(input) {
-      const hex = input.replace('#', '');
-      if (hex.length === 6) {
-        return [
-          parseInt(hex.slice(0, 2), 16) / 255,
-          parseInt(hex.slice(2, 4), 16) / 255,
-          parseInt(hex.slice(4, 6), 16) / 255,
-          1,
-        ];
-      }
-      return [1, 1, 1, 1];
-    }
-
-    const mapLinear = (v, i0, i1, o0, o1) => (i1 === i0 ? o0 : o0 + ((v - i0) / (i1 - i0)) * (o1 - o0));
-    const mapFrequency = (ui) => mapLinear(ui, 1, 10, 0.3, 6);
-    const mapSpeed = (ui) => ui * 0.05;
-    const mapCellSize = (ui) => mapLinear(ui, 1, 100, 6, 60);
-    const mapGamma = (ui) => mapLinear(ui, 1, 20, 0.5, 8);
-    const mapPaletteBias = (ui) => ui * 0.05;
-
-    const MAX_COLORS = 10;
-    const rgb = [], alpha = [];
-    for (let i = 0; i < MAX_COLORS; i++) {
-      const src = CFG.colors[i];
-      if (src != null) {
-        const [r, g, b, a] = parseColorToRgba(src);
-        rgb.push([r, g, b]);
-        alpha.push(a);
-      } else {
-        rgb.push([0, 0, 0]);
-        alpha.push(0);
-      }
-    }
-    const effPaletteCount = Math.min(MAX_COLORS, Math.max(1, CFG.colors.length));
-
-    const renderer = new Renderer({ dpr: Math.min(window.devicePixelRatio || 1, 2), alpha: true, premultipliedAlpha: false });
+    const renderer = new Renderer({ dpr: Math.min(window.devicePixelRatio || 1, 2), alpha: true, antialias: true });
     const gl = renderer.gl;
-    container.appendChild(gl.canvas);
-    gl.canvas.style.position = 'absolute';
-    gl.canvas.style.inset = '0';
-    gl.canvas.style.width = '100%';
-    gl.canvas.style.height = '100%';
-    gl.canvas.style.display = 'block';
+    gl.clearColor(0, 0, 0, 0);
+    // Reaproveita o próprio <canvas id="bg-canvas"> em vez de criar um novo.
+    const container = canvas.parentElement;
 
-    const camera = new Camera(gl, { near: 0.1, far: 100 });
-    camera.position.set(0, 0, 3);
+    const { arr, count } = prepColors(CFG.colors);
 
-    function doResize() {
-      const width = container.clientWidth || window.innerWidth;
-      const height = container.clientHeight || window.innerHeight;
-      renderer.setSize(width, height);
-      camera.perspective({ aspect: gl.canvas.width / gl.canvas.height });
-      if (renderTarget && renderTarget.setSize) renderTarget.setSize(gl.canvas.width, gl.canvas.height);
-      if (perlinProgram) perlinProgram.uniforms.uResolution.value = [gl.canvas.width, gl.canvas.height];
+    const uniforms = {
+      iResolution: { value: [gl.drawingBufferWidth, gl.drawingBufferHeight, 1] },
+      iMouse: { value: [0, 0] },
+      iTime: { value: 0 },
+      uColor0: { value: arr[0] }, uColor1: { value: arr[1] },
+      uColor2: { value: arr[2] }, uColor3: { value: arr[3] },
+      uColor4: { value: arr[4] }, uColor5: { value: arr[5] },
+      uColor6: { value: arr[6] }, uColor7: { value: arr[7] },
+      uColorCount: { value: count },
+      uFlow: { value: flowVec(CFG.flowDirection) },
+      uSpeed: { value: CFG.speed },
+      uScale: { value: CFG.scale },
+      uTurbulence: { value: CFG.turbulence },
+      uFluidity: { value: CFG.fluidity },
+      uRimWidth: { value: CFG.rimWidth },
+      uSharpness: { value: CFG.sharpness },
+      uShimmer: { value: CFG.shimmer },
+      uGlow: { value: CFG.glow },
+      uOpacity: { value: CFG.opacity },
+      uMouseEnabled: { value: CFG.mouseInteraction ? 1 : 0 },
+      uMouseStrength: { value: CFG.mouseStrength },
+      uMouseRadius: { value: CFG.mouseRadius },
+    };
+
+    const program = new Program(gl, { vertex, fragment, uniforms });
+    const geometry = new Triangle(gl);
+    const mesh = new Mesh(gl, { geometry, program });
+
+    function resize() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      renderer.setSize(w, h);
+      uniforms.iResolution.value = [gl.drawingBufferWidth, gl.drawingBufferHeight, 1];
     }
+    resize();
+    window.addEventListener('resize', resize);
 
-    let resizePending = false;
-    function scheduleResize() {
-      if (resizePending) return;
-      resizePending = true;
-      requestAnimationFrame(() => { resizePending = false; doResize(); });
-    }
-    window.addEventListener('resize', scheduleResize);
-    if (typeof window.ResizeObserver !== 'undefined') new ResizeObserver(scheduleResize).observe(container);
-
-    const perlinProgram = new Program(gl, {
-      vertex: perlinVertexShader,
-      fragment: perlinFragmentShader,
-      uniforms: {
-        uTime: { value: 0 },
-        uFrequency: { value: mapFrequency(CFG.frequency) },
-        uSpeed: { value: mapSpeed(CFG.speed) },
-        uValue: { value: 1 },
-        uResolution: { value: [gl.canvas.width, gl.canvas.height] },
-      },
-    });
-    const perlinMesh = new Mesh(gl, { geometry: new Plane(gl, { width: 2, height: 2 }), program: perlinProgram });
-
-    const renderTarget = new OglRenderTarget(gl);
-
-    const dotProgram = new Program(gl, {
-      vertex: dotVertexShader,
-      fragment: dotFragmentShader,
-      uniforms: {
-        uResolution: { value: [gl.canvas.width, gl.canvas.height] },
-        uTexture: { value: renderTarget.texture },
-        uPaletteCount: { value: effPaletteCount },
-        uPalette: { value: rgb },
-        uPaletteAlpha: { value: alpha },
-        uCellSize: { value: mapCellSize(CFG.cellSize) },
-        uGamma: { value: mapGamma(CFG.gamma) },
-        uPaletteBias: { value: mapPaletteBias(CFG.paletteBias) },
-      },
-    });
-    const dotMesh = new Mesh(gl, { geometry: new Plane(gl, { width: 2, height: 2 }), program: dotProgram });
-
-    // ---- Ciclo de cores do fundo — começa em branco e faz
-    // transições suaves entre 3 cores, em loop contínuo. ----
-    const BG_COLORS = ['#ffffff', '#e8a94b', '#5ec8ff'];
-    const BG_SEGMENT_MS = 6000; // duração de cada transição
-    const bgColorsRgb = BG_COLORS.map((c) => parseColorToRgba(c));
-
-    function easeInOutQuad(t) {
-      return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-    }
-
-    function currentBgRgb(elapsedMs) {
-      const n = bgColorsRgb.length;
-      const total = n * BG_SEGMENT_MS;
-      const t = elapsedMs % total;
-      const idx = Math.floor(t / BG_SEGMENT_MS);
-      const localT = easeInOutQuad((t % BG_SEGMENT_MS) / BG_SEGMENT_MS);
-      const a = bgColorsRgb[idx];
-      const b = bgColorsRgb[(idx + 1) % n];
-      return [
-        a[0] + (b[0] - a[0]) * localT,
-        a[1] + (b[1] - a[1]) * localT,
-        a[2] + (b[2] - a[2]) * localT,
-      ];
-    }
-
-    function buildPaletteArray(rgbColor) {
-      const arr = [rgbColor];
-      for (let i = 1; i < MAX_COLORS; i++) arr.push([0, 0, 0]);
-      return arr;
-    }
-
-    doResize();
-
-    const frameInterval = 1000 / 30;
+    let mouseTarget = [0, 0];
     let lastTime = 0;
-    let bgStartTime = null;
-    function update(time) {
-      if (time - lastTime < frameInterval) {
-        requestAnimationFrame(update);
-        return;
-      }
-      lastTime = time;
-      if (bgStartTime === null) bgStartTime = time;
-      perlinProgram.uniforms.uTime.value = time * 0.001;
-      renderer.render({ scene: perlinMesh, camera, target: renderTarget });
-      dotProgram.uniforms.uResolution.value = [gl.canvas.width, gl.canvas.height];
-      dotProgram.uniforms.uPalette.value = buildPaletteArray(currentBgRgb(time - bgStartTime));
-      renderer.render({ scene: dotMesh, camera });
-      requestAnimationFrame(update);
+
+    function onPointerMove(e) {
+      const sc = renderer.dpr || 1;
+      const x = e.clientX * sc;
+      const y = (window.innerHeight - e.clientY) * sc;
+      mouseTarget = [x, y];
     }
-    renderer.render({ scene: perlinMesh, camera, target: renderTarget });
-    renderer.render({ scene: dotMesh, camera });
-    requestAnimationFrame(update);
+    if (CFG.mouseInteraction) {
+      window.addEventListener('pointermove', onPointerMove);
+    }
+
+    function loop(t) {
+      requestAnimationFrame(loop);
+      uniforms.iTime.value = t * 0.001;
+      if (CFG.mouseDampening > 0) {
+        if (!lastTime) lastTime = t;
+        const dt = (t - lastTime) / 1000;
+        lastTime = t;
+        const tau = Math.max(1e-4, CFG.mouseDampening);
+        let factor = 1 - Math.exp(-dt / tau);
+        if (factor > 1) factor = 1;
+        const cur = uniforms.iMouse.value;
+        cur[0] += (mouseTarget[0] - cur[0]) * factor;
+        cur[1] += (mouseTarget[1] - cur[1]) * factor;
+      }
+      try {
+        renderer.render({ scene: mesh });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    requestAnimationFrame(loop);
+
+    // Substitui o canvas placeholder pelo canvas real do OGL.
+    canvas.replaceWith(gl.canvas);
+    gl.canvas.id = 'chromatic-bg';
+    Object.assign(gl.canvas.style, { position: 'absolute', inset: '0', width: '100%', height: '100%', display: 'block', zIndex: '0' });
   }
 
-  initChromaticBg(document.getElementById('chromatic-bg'));
+  initFerrofluid(document.getElementById('chromatic-bg'));
 
   const CONFIG = {
     speed: 2,
@@ -1089,6 +1174,10 @@ void main() {
     const input = document.getElementById('cnpjInput');
     const errorMsg = document.getElementById('cnpjError');
     const btn = document.getElementById('cnpjBtn');
+    const lookupError = document.getElementById('cnpjLookupError');
+    const formCard = document.getElementById('cnpjFormCard');
+    const resultCard = document.getElementById('cnpjResultCard');
+    const newSearchBtn = document.getElementById('cnpjNewSearchBtn');
     const API_BASE_URL = 'https://icarov2backend.onrender.com';
 
     input.addEventListener('input', function () {
@@ -1097,6 +1186,7 @@ void main() {
 
       input.classList.remove('valid', 'invalid');
       errorMsg.classList.remove('show');
+      lookupError.classList.remove('show');
       btn.disabled = true;
 
       if (digits.length === 0) return;
@@ -1115,34 +1205,82 @@ void main() {
       }
     });
 
+    function fillText(id, value) {
+      document.getElementById(id).textContent = (value && String(value).trim()) ? value : '—';
+    }
+
+    function renderResult(data) {
+      fillText('resultRazaoSocial', data.razaoSocial || 'Razão social não encontrada');
+      fillText('resultNomeFantasia', data.nomeFantasia);
+      document.getElementById('resultSource').textContent = 'Fonte: ' + (data.source || '—');
+
+      fillText('resultSituacao', data.situacao);
+      fillText('resultAbertura', data.dataAbertura);
+      fillText('resultPorte', data.porte);
+      fillText('resultNatureza', data.naturezaJuridica);
+      fillText('resultAtividade', data.atividadePrincipal);
+
+      const e = data.endereco || {};
+      const enderecoParts = [
+        [e.logradouro, e.numero].filter(Boolean).join(', '),
+        e.complemento,
+        e.bairro,
+        [e.municipio, e.uf].filter(Boolean).join(' - '),
+        e.cep,
+      ].filter(Boolean);
+      fillText('resultEndereco', enderecoParts.join(' — '));
+
+      fillText('resultTelefone', data.telefone);
+      fillText('resultEmail', data.email);
+
+      formCard.style.display = 'none';
+      resultCard.style.display = 'block';
+    }
+
     btn.addEventListener('click', async function () {
       if (btn.disabled) return;
       const digits = onlyDigits(input.value);
-      const formatted = formatCNPJ(digits);
       const token = localStorage.getItem('icaro_token');
 
       const defaultText = btn.textContent;
       btn.disabled = true;
       btn.textContent = 'Buscando...';
+      lookupError.classList.remove('show');
 
       try {
-        await fetch(API_BASE_URL + '/api/activity/search', {
+        const res = await fetch(API_BASE_URL + '/api/cnpj/lookup', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             Authorization: 'Bearer ' + token,
           },
-          body: JSON.stringify({ cnpj: formatted }),
+          body: JSON.stringify({ cnpj: digits }),
         });
-        // TODO: aqui entra a busca de verdade do CNPJ quando o
-        // próximo passo do ÍCARO for definido — por enquanto só
-        // registramos a busca (visível na aba Utilização do admin).
+        const payload = await res.json().catch(function () { return {}; });
+
+        if (!res.ok) {
+          throw new Error(payload.error || 'Não foi possível buscar esse CNPJ agora.');
+        }
+
+        renderResult(payload.data || {});
       } catch (err) {
-        console.error('[ÍCARO] erro ao registrar busca:', err);
+        lookupError.textContent = err.message;
+        lookupError.classList.add('show');
       } finally {
         btn.textContent = defaultText;
         btn.disabled = false;
       }
+    });
+
+    newSearchBtn.addEventListener('click', function () {
+      resultCard.style.display = 'none';
+      formCard.style.display = 'block';
+      input.value = '';
+      input.classList.remove('valid', 'invalid');
+      errorMsg.classList.remove('show');
+      lookupError.classList.remove('show');
+      btn.disabled = true;
+      input.focus();
     });
   })();
 

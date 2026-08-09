@@ -291,6 +291,112 @@
   }
   .cnpj-btn-secondary:hover { background: rgba(255,255,255,0.06); opacity: 1; }
 
+  /* ---------- seção Google (nota, horário, transporte, fotos) ---------- */
+  .google-divider {
+    height: 1px;
+    background: rgba(255,255,255,0.1);
+    margin: 22px 0 20px;
+  }
+
+  .google-loading {
+    font-size: 12.5px;
+    color: rgba(255,255,255,0.45);
+    text-align: center;
+    padding: 4px 0 2px;
+  }
+
+  .google-rating-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .google-rating-value {
+    font-family: 'Fraunces', Georgia, serif;
+    font-size: 22px;
+    font-weight: 500;
+    color: #ffcb5c;
+  }
+
+  .google-rating-detail {
+    font-size: 12.5px;
+    color: rgba(255,255,255,0.55);
+  }
+
+  .google-open-status {
+    font-size: 12.5px;
+    margin: 0 0 18px;
+  }
+
+  .google-open-status.open { color: #4ade80; }
+  .google-open-status.closed { color: #ff6b6b; }
+
+  .google-transport-grid {
+    margin-bottom: 22px !important;
+  }
+
+  .photos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+  }
+
+  .photo-card {
+    position: relative;
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    cursor: pointer;
+  }
+
+  .photo-card img {
+    width: 100%;
+    height: 90px;
+    object-fit: cover;
+    display: block;
+  }
+
+  .photo-card .photo-tag {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    background: rgba(94, 163, 255, 0.85);
+    color: #fff;
+    font-size: 9.5px;
+    letter-spacing: 0.3px;
+    padding: 2px 7px;
+    border-radius: 999px;
+  }
+
+  .photo-card .photo-caption {
+    padding: 6px 8px 8px;
+    font-size: 10.5px;
+    line-height: 1.35;
+    color: rgba(255,255,255,0.65);
+  }
+
+  #photoLightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(0,0,0,0.88);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    cursor: zoom-out;
+  }
+
+  #photoLightbox.show { display: flex; }
+
+  #photoLightboxImg {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 8px;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     #zoom-wrap { transition: opacity 0.6s ease; transform: none !important; }
     #cursor { animation: none; opacity: 1; }
@@ -384,9 +490,47 @@
           </div>
         </div>
 
+        <!-- Dados do Google (nota, avaliações, horário, transporte, fotos) -->
+        <div class="google-section" id="googleSection" style="display:none;">
+          <div class="google-divider"></div>
+
+          <p class="google-loading" id="googleLoading">Buscando informações no Google...</p>
+
+          <div id="googleContent" style="display:none;">
+            <div class="google-rating-row" id="googleRatingRow" style="display:none;">
+              <span class="google-rating-value" id="googleRatingValue">—</span>
+              <span class="google-rating-detail" id="googleRatingDetail"></span>
+            </div>
+
+            <p class="google-open-status" id="googleOpenStatus" style="display:none;"></p>
+
+            <div class="result-grid google-transport-grid" id="googleTransportGrid" style="display:none;">
+              <div class="result-item">
+                <span class="result-label">Pontos de ônibus</span>
+                <span class="result-value" id="googleOnibus">—</span>
+              </div>
+              <div class="result-item">
+                <span class="result-label">Estações de trem</span>
+                <span class="result-value" id="googleTrem">—</span>
+              </div>
+              <div class="result-item">
+                <span class="result-label">Estações de metrô</span>
+                <span class="result-value" id="googleMetro">—</span>
+              </div>
+            </div>
+
+            <div class="photos-grid" id="photosGrid"></div>
+          </div>
+        </div>
+
         <button type="button" class="cnpj-btn cnpj-btn-secondary" id="cnpjNewSearchBtn">Nova busca</button>
       </div>
     </div>
+  </div>
+
+  <!-- Lightbox pra abrir a foto em tamanho grande -->
+  <div id="photoLightbox">
+    <img id="photoLightboxImg" src="" alt="">
   </div>
 
 <script type="module">
@@ -1221,7 +1365,133 @@ void main() {
 
       formCard.style.display = 'none';
       resultCard.style.display = 'block';
+
+      enrichWithGoogle(data.nomeFantasia || data.razaoSocial, data.endereco);
     }
+
+    // ============================================================
+    // Enriquecimento com Google Places + análise de fotos pela
+    // Claude — roda depois do CNPJ ser encontrado, usando o nome e
+    // o endereço já retornados. Se falhar, a seção simplesmente
+    // some (nunca quebra a busca principal do CNPJ).
+    // ============================================================
+    function formatOpeningHoursStatus(abertoAgora) {
+      const el = document.getElementById('googleOpenStatus');
+      if (abertoAgora === true) {
+        el.textContent = 'Aberto agora';
+        el.className = 'google-open-status open';
+        el.style.display = 'block';
+      } else if (abertoAgora === false) {
+        el.textContent = 'Fechado no momento';
+        el.className = 'google-open-status closed';
+        el.style.display = 'block';
+      } else {
+        el.style.display = 'none';
+      }
+    }
+
+    function renderPhotos(fotos) {
+      const grid = document.getElementById('photosGrid');
+      grid.innerHTML = '';
+      if (!Array.isArray(fotos) || fotos.length === 0) return;
+
+      fotos.forEach(function (foto) {
+        const card = document.createElement('div');
+        card.className = 'photo-card';
+
+        const img = document.createElement('img');
+        img.src = API_BASE_URL + foto.url;
+        img.loading = 'lazy';
+        img.alt = foto.resumo || 'Foto do estabelecimento';
+        card.appendChild(img);
+
+        if (foto.parte) {
+          const tag = document.createElement('span');
+          tag.className = 'photo-tag';
+          tag.textContent = foto.parte;
+          card.appendChild(tag);
+        }
+
+        if (foto.resumo) {
+          const caption = document.createElement('p');
+          caption.className = 'photo-caption';
+          caption.textContent = foto.resumo;
+          card.appendChild(caption);
+        }
+
+        card.addEventListener('click', function () {
+          const lightbox = document.getElementById('photoLightbox');
+          const lightboxImg = document.getElementById('photoLightboxImg');
+          lightboxImg.src = img.src;
+          lightbox.classList.add('show');
+        });
+
+        grid.appendChild(card);
+      });
+    }
+
+    async function enrichWithGoogle(nome, endereco) {
+      const section = document.getElementById('googleSection');
+      const loading = document.getElementById('googleLoading');
+      const content = document.getElementById('googleContent');
+      const ratingRow = document.getElementById('googleRatingRow');
+      const transportGrid = document.getElementById('googleTransportGrid');
+
+      if (!nome || !endereco || endereco === 'Dado não localizado') {
+        section.style.display = 'none';
+        return;
+      }
+
+      section.style.display = 'block';
+      loading.style.display = 'block';
+      content.style.display = 'none';
+      ratingRow.style.display = 'none';
+      transportGrid.style.display = 'none';
+      document.getElementById('googleOpenStatus').style.display = 'none';
+      document.getElementById('photosGrid').innerHTML = '';
+
+      const token = localStorage.getItem('icaro_token');
+
+      try {
+        const params = new URLSearchParams({ nome: nome, endereco: endereco });
+        const res = await fetch(API_BASE_URL + '/api/google-places?' + params.toString(), {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        const payload = await res.json().catch(function () { return {}; });
+
+        if (!res.ok) throw new Error(payload.error || 'Não encontrado no Google.');
+
+        loading.style.display = 'none';
+        content.style.display = 'block';
+
+        if (payload.nota != null) {
+          document.getElementById('googleRatingValue').textContent = '★ ' + payload.nota;
+          document.getElementById('googleRatingDetail').textContent = payload.totalAvaliacoes != null
+            ? '(' + payload.totalAvaliacoes + ' avaliações no Google)'
+            : '';
+          ratingRow.style.display = 'flex';
+        }
+
+        formatOpeningHoursStatus(payload.abertoAgora);
+
+        const t = payload.transporte || {};
+        if (t.pontosOnibus != null || t.estacoesTrem != null || t.estacoesMetro != null) {
+          document.getElementById('googleOnibus').textContent = t.pontosOnibus != null ? t.pontosOnibus : 'Dado não localizado';
+          document.getElementById('googleTrem').textContent = t.estacoesTrem != null ? t.estacoesTrem : 'Dado não localizado';
+          document.getElementById('googleMetro').textContent = t.estacoesMetro != null ? t.estacoesMetro : 'Dado não localizado';
+          transportGrid.style.display = 'grid';
+        }
+
+        renderPhotos(payload.fotos);
+      } catch (err) {
+        console.error('[ÍCARO] enriquecimento do Google falhou:', err.message);
+        section.style.display = 'none';
+      }
+    }
+
+    document.getElementById('photoLightbox').addEventListener('click', function () {
+      this.classList.remove('show');
+    });
 
     btn.addEventListener('click', async function () {
       if (btn.disabled) return;
@@ -1261,6 +1531,7 @@ void main() {
     newSearchBtn.addEventListener('click', function () {
       resultCard.style.display = 'none';
       formCard.style.display = 'block';
+      document.getElementById('googleSection').style.display = 'none';
       input.value = '';
       input.classList.remove('valid', 'invalid');
       errorMsg.classList.remove('show');

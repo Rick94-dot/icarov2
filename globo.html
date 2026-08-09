@@ -366,14 +366,6 @@
             <span class="result-label">Abertura</span>
             <span class="result-value" id="resultAbertura">—</span>
           </div>
-          <div class="result-item">
-            <span class="result-label">Porte</span>
-            <span class="result-value" id="resultPorte">—</span>
-          </div>
-          <div class="result-item">
-            <span class="result-label">Natureza jurídica</span>
-            <span class="result-value" id="resultNatureza">—</span>
-          </div>
           <div class="result-item result-item-wide">
             <span class="result-label">Atividade principal</span>
             <span class="result-value" id="resultAtividade">—</span>
@@ -1206,30 +1198,24 @@ void main() {
     });
 
     function fillText(id, value) {
-      document.getElementById(id).textContent = (value && String(value).trim()) ? value : '—';
+      document.getElementById(id).textContent = (value && String(value).trim())
+        ? value
+        : 'Dado não localizado';
     }
 
     function renderResult(data) {
-      fillText('resultRazaoSocial', data.razaoSocial || 'Razão social não encontrada');
+      fillText('resultRazaoSocial', data.razaoSocial);
       fillText('resultNomeFantasia', data.nomeFantasia);
-      document.getElementById('resultSource').textContent = 'Fonte: ' + (data.source || '—');
+
+      const fontes = Array.isArray(data.fontesConsultadas) ? data.fontesConsultadas : [];
+      document.getElementById('resultSource').textContent = fontes.length
+        ? 'Fontes consultadas: ' + fontes.join(', ')
+        : '';
 
       fillText('resultSituacao', data.situacao);
       fillText('resultAbertura', data.dataAbertura);
-      fillText('resultPorte', data.porte);
-      fillText('resultNatureza', data.naturezaJuridica);
       fillText('resultAtividade', data.atividadePrincipal);
-
-      const e = data.endereco || {};
-      const enderecoParts = [
-        [e.logradouro, e.numero].filter(Boolean).join(', '),
-        e.complemento,
-        e.bairro,
-        [e.municipio, e.uf].filter(Boolean).join(' - '),
-        e.cep,
-      ].filter(Boolean);
-      fillText('resultEndereco', enderecoParts.join(' — '));
-
+      fillText('resultEndereco', data.endereco);
       fillText('resultTelefone', data.telefone);
       fillText('resultEmail', data.email);
 

@@ -310,6 +310,120 @@
     padding: 8px 4px 4px;
   }
 
+  /* ---------- critérios do sistema ---------- */
+  .criterion-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 11px 4px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .criterion-row:last-child { border-bottom: none; }
+
+  .criterion-index {
+    width: 22px;
+    flex-shrink: 0;
+    font-size: 11.5px;
+    color: rgba(255,255,255,0.3);
+    text-align: right;
+  }
+
+  .criterion-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 13.5px;
+    color: var(--white);
+  }
+
+  .criterion-weight-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .criterion-weight-wrap label {
+    font-size: 10.5px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+  }
+
+  .criterion-weight-input {
+    width: 60px;
+    padding: 7px 8px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.04);
+    color: var(--white);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    text-align: center;
+    outline: none;
+    transition: border-color 0.2s ease;
+  }
+  .criterion-weight-input:focus { border-color: rgba(255,255,255,0.5); }
+
+  .criterion-remove-btn {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 92, 92, 0.3);
+    background: rgba(255, 92, 92, 0.06);
+    color: #ff8080;
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+  .criterion-remove-btn:hover { background: rgba(255, 92, 92, 0.15); }
+
+  .criteria-add-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .criteria-add-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 11px 13px;
+    border-radius: 9px;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.04);
+    color: var(--white);
+    font-family: 'Inter', sans-serif;
+    font-size: 13.5px;
+    outline: none;
+  }
+  .criteria-add-input:focus { border-color: rgba(255,255,255,0.5); }
+  .criteria-add-input::placeholder { color: rgba(255,255,255,0.3); }
+
+  .criteria-weight-input {
+    width: 70px;
+    flex-shrink: 0;
+    padding: 11px 8px;
+    border-radius: 9px;
+    border: 1px solid rgba(255,255,255,0.14);
+    background: rgba(255,255,255,0.04);
+    color: var(--white);
+    font-family: 'Inter', sans-serif;
+    font-size: 13.5px;
+    text-align: center;
+    outline: none;
+  }
+  .criteria-weight-input:focus { border-color: rgba(255,255,255,0.5); }
+
+  .criteria-add-btn {
+    flex-shrink: 0;
+    width: auto;
+    padding: 11px 20px;
+    white-space: nowrap;
+  }
+
   /* ---------- utilização (atividade por usuário) ---------- */
   .usage-group {
     margin-bottom: 24px;
@@ -618,17 +732,27 @@
       </div>
     </div>
 
-    <!-- aba: critérios do sistema (vazia por enquanto) -->
+    <!-- aba: critérios do sistema -->
     <div id="view-settings" class="admin-view">
       <div class="panel-wrap">
         <div class="panel-header">
           <div>
             <h1 class="panel-title">Critérios do sistema</h1>
-            <p class="panel-subtitle">Regras e parâmetros do ÍCARO</p>
+            <p class="panel-subtitle">Critérios usados para avaliar prestadores, com peso de cada um</p>
           </div>
         </div>
+
         <div class="card">
-          <p class="placeholder-view">Em breve.</p>
+          <div id="criteriaList">
+            <p class="panel-loading">Carregando critérios...</p>
+          </div>
+
+          <div class="criteria-add-row">
+            <input type="text" id="newCriterionLabel" class="criteria-add-input" placeholder="Nome do novo critério">
+            <input type="number" id="newCriterionWeight" class="criteria-weight-input" value="1" min="0" step="0.5">
+            <button type="button" class="btn criteria-add-btn" id="addCriterionBtn">Adicionar</button>
+          </div>
+          <p class="create-error" id="criteriaError"></p>
         </div>
       </div>
     </div>
@@ -968,6 +1092,7 @@ void main() {
       });
       if (name === 'users') loadUsers();
       if (name === 'usage') loadUsage();
+      if (name === 'settings') loadCriteria();
     }
     window.__icaroShowView = showView;
 
@@ -1166,6 +1291,124 @@ void main() {
         usageList.innerHTML = '<p class="panel-error">' + err.message + '</p>';
       }
     }
+
+    // ============================================================
+    // Critérios do sistema — listar, editar peso, remover, criar.
+    // ============================================================
+    function renderCriteria(criteria) {
+      const list = document.getElementById('criteriaList');
+      if (!criteria.length) {
+        list.innerHTML = '<p class="users-empty">Nenhum critério cadastrado ainda.</p>';
+        return;
+      }
+      list.innerHTML = criteria.map(function (c, i) {
+        return (
+          '<div class="criterion-row" data-id="' + c._id + '">' +
+            '<span class="criterion-index">' + (i + 1) + '</span>' +
+            '<span class="criterion-label">' + c.label + '</span>' +
+            '<div class="criterion-weight-wrap">' +
+              '<label for="weight-' + c._id + '">Peso</label>' +
+              '<input type="number" id="weight-' + c._id + '" class="criterion-weight-input" value="' + c.peso + '" min="0" step="0.5">' +
+            '</div>' +
+            '<button type="button" class="criterion-remove-btn" title="Remover critério">×</button>' +
+          '</div>'
+        );
+      }).join('');
+    }
+
+    async function loadCriteria() {
+      const list = document.getElementById('criteriaList');
+      list.innerHTML = '<p class="panel-loading">Carregando critérios...</p>';
+      try {
+        const data = await api('/api/admin/criteria', { method: 'GET' });
+        renderCriteria(data.criteria || []);
+      } catch (err) {
+        if (err.status === 401 || err.status === 403) {
+          clearSession();
+          window.location.href = 'index.html';
+          return;
+        }
+        list.innerHTML = '<p class="panel-error">' + err.message + '</p>';
+      }
+    }
+
+    // Salva o peso quando o campo perde o foco ou o usuário aperta Enter.
+    document.getElementById('criteriaList').addEventListener('change', async function (e) {
+      if (!e.target.classList.contains('criterion-weight-input')) return;
+      const row = e.target.closest('.criterion-row');
+      const id = row.getAttribute('data-id');
+      const peso = e.target.value;
+
+      e.target.disabled = true;
+      try {
+        await api('/api/admin/criteria/' + id, {
+          method: 'PATCH',
+          body: JSON.stringify({ peso: Number(peso) }),
+        });
+      } catch (err) {
+        alert(err.message);
+        loadCriteria();
+      } finally {
+        e.target.disabled = false;
+      }
+    });
+
+    document.getElementById('criteriaList').addEventListener('click', async function (e) {
+      if (!e.target.classList.contains('criterion-remove-btn')) return;
+      const row = e.target.closest('.criterion-row');
+      const id = row.getAttribute('data-id');
+      const label = row.querySelector('.criterion-label').textContent;
+
+      if (!confirm('Remover o critério "' + label + '"?')) return;
+
+      e.target.disabled = true;
+      try {
+        await api('/api/admin/criteria/' + id, { method: 'DELETE' });
+        loadCriteria();
+      } catch (err) {
+        alert(err.message);
+        e.target.disabled = false;
+      }
+    });
+
+    document.getElementById('addCriterionBtn').addEventListener('click', async function () {
+      const labelInput = document.getElementById('newCriterionLabel');
+      const weightInput = document.getElementById('newCriterionWeight');
+      const errorEl = document.getElementById('criteriaError');
+      const btn = this;
+
+      errorEl.classList.remove('show');
+
+      const label = labelInput.value.trim();
+      if (!label) {
+        errorEl.textContent = 'Digite o nome do critério.';
+        errorEl.classList.add('show');
+        return;
+      }
+
+      btn.disabled = true;
+      try {
+        await api('/api/admin/criteria', {
+          method: 'POST',
+          body: JSON.stringify({ label: label, peso: Number(weightInput.value) || 1 }),
+        });
+        labelInput.value = '';
+        weightInput.value = '1';
+        loadCriteria();
+      } catch (err) {
+        errorEl.textContent = err.message;
+        errorEl.classList.add('show');
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    document.getElementById('newCriterionLabel').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('addCriterionBtn').click();
+      }
+    });
 
     usersList.addEventListener('click', async function (e) {
       const row = e.target.closest('.user-row');

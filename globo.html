@@ -109,11 +109,17 @@
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.8s ease;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   #cnpj-stage.show {
     opacity: 1;
     pointer-events: auto;
+  }
+
+  .cnpj-card, .cnpj-result-card {
+    margin: auto 0;
   }
 
   .cnpj-card {
@@ -691,7 +697,7 @@
             </div>
 
             <div class="ai-summary-card" id="aiSummaryCard" style="display:none;">
-              <p class="google-subtitle">Resumo das avaliações (Claude)</p>
+              <p class="google-subtitle">Resumo das avaliações</p>
               <p class="ai-summary-text" id="aiSummaryText"></p>
               <div class="ai-points-grid" id="aiPointsGrid"></div>
             </div>
@@ -1747,7 +1753,6 @@ void main() {
 
         renderHours(payload.horarioFuncionamento);
         renderAccessibility(payload.acessibilidade);
-        renderAiSummary(payload.resumoAvaliacoes);
 
         const t = payload.transporte || {};
         if (t.pontosOnibus != null || t.estacoesTrem != null || t.estacoesMetro != null) {
@@ -1756,17 +1761,16 @@ void main() {
           document.getElementById('googleMetro').textContent = t.estacoesMetro != null ? t.estacoesMetro : 'Dado não localizado';
           transportGrid.style.display = 'grid';
         }
-
-        renderPhotos(payload.fotos);
       } catch (err) {
         console.error('[ÍCARO] enriquecimento do Google falhou:', err.message);
         section.style.display = 'none';
       }
 
-      // Avaliações — módulo isolado, chamado à parte (não depende do
-      // resultado do /api/google-places acima). Se essa parte falhar,
-      // não derruba o resto da seção, que já está de pé.
+      // Avaliações e fotos — módulos isolados, chamados à parte (não
+      // dependem do resultado do /api/google-places acima). Se alguma
+      // dessas partes falhar, não derruba o resto da seção.
       loadReviewsIsolated(nome, municipio, uf);
+      loadPhotosIsolated(nome, municipio, uf);
     }
 
     async function loadReviewsIsolated(nome, municipio, uf) {
@@ -1791,13 +1795,48 @@ void main() {
 
         if (!res.ok) {
           wrap.innerHTML = '<p class="google-empty">Não foi possível buscar avaliações: ' + (payload.error || 'erro desconhecido') + '</p>';
+          renderAiSummary(null);
           return;
         }
 
         renderReviews(payload.avaliacoes);
+        renderAiSummary(payload.resumoAvaliacoes);
       } catch (err) {
         console.error('[ÍCARO] erro ao buscar avaliações (módulo isolado):', err.message);
         wrap.innerHTML = '<p class="google-empty">Não foi possível buscar avaliações agora.</p>';
+        renderAiSummary(null);
+      }
+    }
+
+    async function loadPhotosIsolated(nome, municipio, uf) {
+      const grid = document.getElementById('photosGrid');
+      grid.innerHTML = '<p class="google-loading">Carregando fotos...</p>';
+
+      const token = localStorage.getItem('icaro_token');
+
+      try {
+        const params = new URLSearchParams({ nome: nome });
+        if (municipio) params.set('municipio', municipio);
+        if (uf) params.set('uf', uf);
+
+        const res = await fetch(API_BASE_URL + '/api/google-photos?' + params.toString(), {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        const payload = await res.json().catch(function () { return {}; });
+
+        // Log da resposta crua do Google — abra o Console do navegador
+        // (F12) pra inspecionar exatamente o que a API devolveu.
+        console.log('[ÍCARO] debug fotos (resposta crua do Google):', payload.debug);
+
+        if (!res.ok) {
+          grid.innerHTML = '<p class="google-empty">Não foi possível buscar fotos: ' + (payload.error || 'erro desconhecido') + '</p>';
+          return;
+        }
+
+        renderPhotos(payload.fotos);
+      } catch (err) {
+        console.error('[ÍCARO] erro ao buscar fotos (módulo isolado):', err.message);
+        grid.innerHTML = '<p class="google-empty">Não foi possível buscar fotos agora.</p>';
       }
     }
 

@@ -438,6 +438,7 @@
   .access-badge.show { display: inline-block; }
   .access-badge.yes { border-color: rgba(74,222,128,0.4); color: #4ade80; }
   .access-badge.no { border-color: rgba(255,107,107,0.35); color: #ff8080; }
+  .access-badge.unknown { border-color: rgba(255,255,255,0.1); color: rgba(255,255,255,0.35); }
 
   .google-reviews {
     display: flex;
@@ -1647,22 +1648,20 @@ void main() {
         { id: 'accessAssentos', label: 'Assentos acessíveis', value: acessibilidade && acessibilidade.assentosAcessiveis },
       ];
 
-      let anyShown = false;
       items.forEach(function (item) {
         const el = document.getElementById(item.id);
         if (item.value === true) {
           el.textContent = '✓ ' + item.label;
           el.className = 'access-badge show yes';
-          anyShown = true;
         } else if (item.value === false) {
           el.textContent = '✕ ' + item.label;
           el.className = 'access-badge show no';
-          anyShown = true;
         } else {
-          el.className = 'access-badge';
+          el.textContent = item.label + ': não informado';
+          el.className = 'access-badge show unknown';
         }
       });
-      row.style.display = anyShown ? 'flex' : 'none';
+      row.style.display = 'flex';
     }
 
     function renderHours(horarioFuncionamento) {

@@ -1757,11 +1757,47 @@ void main() {
           transportGrid.style.display = 'grid';
         }
 
-        renderReviews(payload.avaliacoes);
         renderPhotos(payload.fotos);
       } catch (err) {
         console.error('[ÍCARO] enriquecimento do Google falhou:', err.message);
         section.style.display = 'none';
+      }
+
+      // Avaliações — módulo isolado, chamado à parte (não depende do
+      // resultado do /api/google-places acima). Se essa parte falhar,
+      // não derruba o resto da seção, que já está de pé.
+      loadReviewsIsolated(nome, municipio, uf);
+    }
+
+    async function loadReviewsIsolated(nome, municipio, uf) {
+      const wrap = document.getElementById('googleReviews');
+      wrap.innerHTML = '<p class="google-loading">Carregando avaliações...</p>';
+
+      const token = localStorage.getItem('icaro_token');
+
+      try {
+        const params = new URLSearchParams({ nome: nome });
+        if (municipio) params.set('municipio', municipio);
+        if (uf) params.set('uf', uf);
+
+        const res = await fetch(API_BASE_URL + '/api/google-reviews?' + params.toString(), {
+          headers: { Authorization: 'Bearer ' + token },
+        });
+        const payload = await res.json().catch(function () { return {}; });
+
+        // Log da resposta crua do Google — abra o Console do navegador
+        // (F12) pra inspecionar exatamente o que a API devolveu.
+        console.log('[ÍCARO] debug avaliações (resposta crua do Google):', payload.debug);
+
+        if (!res.ok) {
+          wrap.innerHTML = '<p class="google-empty">Não foi possível buscar avaliações: ' + (payload.error || 'erro desconhecido') + '</p>';
+          return;
+        }
+
+        renderReviews(payload.avaliacoes);
+      } catch (err) {
+        console.error('[ÍCARO] erro ao buscar avaliações (módulo isolado):', err.message);
+        wrap.innerHTML = '<p class="google-empty">Não foi possível buscar avaliações agora.</p>';
       }
     }
 

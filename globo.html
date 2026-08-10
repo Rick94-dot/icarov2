@@ -297,6 +297,115 @@
   }
   .cnpj-btn-secondary:hover { background: rgba(255,255,255,0.06); opacity: 1; }
 
+  /* ---------- busca em massa ---------- */
+  .mode-link {
+    display: block;
+    width: 100%;
+    margin-top: 16px;
+    padding: 0;
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.5);
+    font-family: 'Inter', sans-serif;
+    font-size: 12px;
+    text-decoration: underline;
+    text-decoration-color: rgba(255,255,255,0.25);
+    cursor: pointer;
+  }
+  .mode-link:hover { color: rgba(255,255,255,0.8); }
+
+  .bulk-file-name {
+    font-size: 12px;
+    color: rgba(255,255,255,0.55);
+    margin: 10px 0 16px;
+    word-break: break-all;
+  }
+
+  .bulk-progress-text {
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    margin: 16px 0 8px;
+    text-align: center;
+  }
+
+  .bulk-progress-bar {
+    width: 100%;
+    height: 6px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.08);
+    overflow: hidden;
+  }
+
+  .bulk-progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--white);
+    transition: width 0.3s ease;
+  }
+
+  .cnpj-card-wide {
+    max-width: 820px;
+    text-align: left;
+  }
+
+  .bulk-results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 18px;
+    flex-wrap: wrap;
+  }
+
+  .bulk-results-header .cnpj-title { margin: 0; }
+
+  .bulk-download-btn {
+    width: auto;
+    padding: 10px 18px;
+    font-size: 12.5px;
+  }
+
+  .bulk-table-wrap {
+    max-width: 100%;
+    overflow-x: auto;
+    margin-bottom: 20px;
+    border: 1px solid rgba(255,255,255,0.09);
+    border-radius: 12px;
+  }
+
+  .bulk-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  .bulk-table th {
+    text-align: left;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.5);
+    font-size: 10.5px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    border-bottom: 1px solid rgba(255,255,255,0.09);
+  }
+
+  .bulk-table td {
+    padding: 10px 12px;
+    color: rgba(255,255,255,0.85);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    white-space: nowrap;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .bulk-table tr:last-child td { border-bottom: none; }
+
+  .bulk-status-ok { color: #4ade80; }
+  .bulk-status-erro { color: #ff8080; }
+
   /* ---------- seção Google (nota, horário, transporte, fotos) ---------- */
   .google-divider {
     height: 1px;
@@ -586,6 +695,7 @@
     background: rgba(255, 255, 255, 0.1);
   }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -610,6 +720,52 @@
         </div>
         <button type="button" class="cnpj-btn" id="cnpjBtn" disabled>Buscar</button>
         <p class="cnpj-lookup-error" id="cnpjLookupError"></p>
+        <button type="button" class="mode-link" id="showBulkBtn">Buscar em massa (planilha)</button>
+      </div>
+
+      <!-- ---------- busca em massa: upload da planilha ---------- -->
+      <div class="cnpj-card" id="bulkUploadCard" style="display:none;">
+        <h2 class="cnpj-title">Busca em massa</h2>
+        <p class="cnpj-subtitle">Envie uma planilha (.xlsx, .xls ou .csv) com uma coluna de CNPJs</p>
+
+        <input type="file" id="bulkFileInput" accept=".xlsx,.xls,.csv" style="display:none;">
+        <button type="button" class="cnpj-btn cnpj-btn-secondary" id="bulkChooseFileBtn">Escolher planilha</button>
+        <p class="bulk-file-name" id="bulkFileName"></p>
+
+        <button type="button" class="cnpj-btn" id="bulkStartBtn" disabled>Iniciar busca em massa</button>
+        <p class="cnpj-lookup-error" id="bulkError"></p>
+
+        <div id="bulkProgress" style="display:none;">
+          <p class="bulk-progress-text" id="bulkProgressText">Processando 0 de 0...</p>
+          <div class="bulk-progress-bar"><div class="bulk-progress-fill" id="bulkProgressFill"></div></div>
+        </div>
+
+        <button type="button" class="mode-link" id="showSingleBtn">← Voltar pra busca individual</button>
+      </div>
+
+      <!-- ---------- busca em massa: resultados ---------- -->
+      <div class="cnpj-card cnpj-card-wide" id="bulkResultsCard" style="display:none;">
+        <div class="bulk-results-header">
+          <h2 class="cnpj-title">Resultado da busca em massa</h2>
+          <button type="button" class="cnpj-btn cnpj-btn-secondary bulk-download-btn" id="bulkDownloadBtn">Baixar planilha</button>
+        </div>
+        <div class="bulk-table-wrap">
+          <table class="bulk-table" id="bulkTable">
+            <thead>
+              <tr>
+                <th>CNPJ</th>
+                <th>Razão social</th>
+                <th>Situação</th>
+                <th>Nota Google</th>
+                <th>Telefone</th>
+                <th>Cidade/UF</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="bulkTableBody"></tbody>
+          </table>
+        </div>
+        <button type="button" class="cnpj-btn cnpj-btn-secondary" id="bulkNewSearchBtn">Nova busca em massa</button>
       </div>
 
       <div class="cnpj-card cnpj-result-card" id="cnpjResultCard" style="display:none;">
@@ -1932,6 +2088,236 @@ void main() {
       lookupError.classList.remove('show');
       btn.disabled = true;
       input.focus();
+    });
+
+    // ============================================================
+    // Busca em massa — upload de planilha (.xlsx/.xls/.csv) com uma
+    // coluna de CNPJs. Reaproveita os MESMOS endpoints da busca
+    // individual (CNPJ + Google Places + avaliações), só sem a busca
+    // de fotos (que fica de fora de propósito nessa modalidade).
+    // ============================================================
+    const uploadCard = document.getElementById('bulkUploadCard');
+    const resultsCard = document.getElementById('bulkResultsCard');
+    const fileInput = document.getElementById('bulkFileInput');
+    const chooseFileBtn = document.getElementById('bulkChooseFileBtn');
+    const fileNameEl = document.getElementById('bulkFileName');
+    const startBtn = document.getElementById('bulkStartBtn');
+    const bulkErrorEl = document.getElementById('bulkError');
+    const progressWrap = document.getElementById('bulkProgress');
+    const progressText = document.getElementById('bulkProgressText');
+    const progressFill = document.getElementById('bulkProgressFill');
+
+    let bulkSelectedFile = null;
+    let bulkResults = [];
+
+    document.getElementById('showBulkBtn').addEventListener('click', function () {
+      formCard.style.display = 'none';
+      uploadCard.style.display = 'block';
+    });
+
+    document.getElementById('showSingleBtn').addEventListener('click', function () {
+      uploadCard.style.display = 'none';
+      formCard.style.display = 'block';
+    });
+
+    chooseFileBtn.addEventListener('click', function () { fileInput.click(); });
+
+    fileInput.addEventListener('change', function () {
+      const file = fileInput.files[0];
+      bulkErrorEl.classList.remove('show');
+      if (!file) return;
+      bulkSelectedFile = file;
+      fileNameEl.textContent = file.name;
+      startBtn.disabled = false;
+    });
+
+    function extrairCnpjsDaPlanilha(file) {
+      return new Promise(function (resolve, reject) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+            const encontrados = [];
+            rows.forEach(function (row) {
+              (row || []).forEach(function (cell) {
+                const digits = String(cell == null ? '' : cell).replace(/\D/g, '');
+                if (digits.length === 14) encontrados.push(digits);
+              });
+            });
+            resolve(Array.from(new Set(encontrados)));
+          } catch (err) {
+            reject(err);
+          }
+        };
+        reader.onerror = function () { reject(new Error('Não foi possível ler o arquivo.')); };
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    startBtn.addEventListener('click', async function () {
+      if (!bulkSelectedFile) return;
+      bulkErrorEl.classList.remove('show');
+      startBtn.disabled = true;
+
+      let cnpjs;
+      try {
+        cnpjs = await extrairCnpjsDaPlanilha(bulkSelectedFile);
+      } catch (err) {
+        bulkErrorEl.textContent = err.message;
+        bulkErrorEl.classList.add('show');
+        startBtn.disabled = false;
+        return;
+      }
+
+      if (!cnpjs.length) {
+        bulkErrorEl.textContent = 'Nenhum CNPJ (14 dígitos) foi encontrado nessa planilha.';
+        bulkErrorEl.classList.add('show');
+        startBtn.disabled = false;
+        return;
+      }
+
+      await rodarBuscaEmMassa(cnpjs);
+    });
+
+    async function rodarBuscaEmMassa(cnpjs) {
+      const token = localStorage.getItem('icaro_token');
+      progressWrap.style.display = 'block';
+      bulkResults = [];
+
+      for (let i = 0; i < cnpjs.length; i++) {
+        const cnpj = cnpjs[i];
+        progressText.textContent = 'Processando ' + (i + 1) + ' de ' + cnpjs.length + '...';
+        progressFill.style.width = Math.round((i / cnpjs.length) * 100) + '%';
+
+        const linha = { cnpj: cnpj, status: 'ok', erro: '' };
+
+        try {
+          const cnpjRes = await fetch(API_BASE_URL + '/api/cnpj/lookup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+            body: JSON.stringify({ cnpj: cnpj }),
+          });
+          const cnpjPayload = await cnpjRes.json().catch(function () { return {}; });
+          if (!cnpjRes.ok) throw new Error(cnpjPayload.error || 'Erro ao buscar CNPJ.');
+
+          const d = cnpjPayload.data || {};
+          Object.assign(linha, {
+            razaoSocial: d.razaoSocial || '',
+            nomeFantasia: d.nomeFantasia || '',
+            situacao: d.situacao || '',
+            dataAbertura: d.dataAbertura || '',
+            atividadePrincipal: d.atividadePrincipal || '',
+            endereco: d.endereco || '',
+            municipio: d.enderecoMunicipio || '',
+            uf: d.enderecoUf || '',
+            telefone: d.telefone || '',
+            email: d.email || '',
+          });
+
+          const nomeBusca = d.nomeFantasia || d.razaoSocial;
+
+          if (nomeBusca) {
+            // Dados do Google (SEM fotos, de propósito) — se falhar,
+            // a linha continua com os dados do CNPJ mesmo assim.
+            try {
+              const gpParams = new URLSearchParams({ nome: nomeBusca });
+              if (d.enderecoMunicipio) gpParams.set('municipio', d.enderecoMunicipio);
+              if (d.enderecoUf) gpParams.set('uf', d.enderecoUf);
+              const gpRes = await fetch(API_BASE_URL + '/api/google-places?' + gpParams.toString(), {
+                headers: { Authorization: 'Bearer ' + token },
+              });
+              const gp = await gpRes.json().catch(function () { return {}; });
+              if (gpRes.ok) {
+                const t = gp.transporte || {};
+                Object.assign(linha, {
+                  notaGoogle: gp.nota != null ? gp.nota : '',
+                  totalAvaliacoesGoogle: gp.totalAvaliacoes != null ? gp.totalAvaliacoes : '',
+                  telefoneGoogle: gp.telefone || '',
+                  site: gp.site || '',
+                  horarioFuncionamento: Array.isArray(gp.horarioFuncionamento) ? gp.horarioFuncionamento.join(' | ') : '',
+                  entradaAcessivel: gp.acessibilidade ? gp.acessibilidade.entradaAcessivel : null,
+                  estacionamentoAcessivel: gp.acessibilidade ? gp.acessibilidade.estacionamentoAcessivel : null,
+                  banheiroAcessivel: gp.acessibilidade ? gp.acessibilidade.banheiroAcessivel : null,
+                  pontosOnibus: t.pontosOnibus != null ? t.pontosOnibus : '',
+                  estacoesTrem: t.estacoesTrem != null ? t.estacoesTrem : '',
+                  estacoesMetro: t.estacoesMetro != null ? t.estacoesMetro : '',
+                });
+              }
+            } catch (e) { /* segue mesmo se essa parte falhar */ }
+
+            // Avaliações (texto + resumo da Claude) — também opcional.
+            try {
+              const grParams = new URLSearchParams({ nome: nomeBusca });
+              if (d.enderecoMunicipio) grParams.set('municipio', d.enderecoMunicipio);
+              if (d.enderecoUf) grParams.set('uf', d.enderecoUf);
+              const grRes = await fetch(API_BASE_URL + '/api/google-reviews?' + grParams.toString(), {
+                headers: { Authorization: 'Bearer ' + token },
+              });
+              const gr = await grRes.json().catch(function () { return {}; });
+              if (grRes.ok) {
+                linha.qtdAvaliacoesComTexto = (gr.avaliacoes || []).length;
+                linha.resumoAvaliacoes = gr.resumoAvaliacoes ? (gr.resumoAvaliacoes.resumoGeral || '') : '';
+              }
+            } catch (e) { /* segue mesmo se essa parte falhar */ }
+          }
+        } catch (err) {
+          linha.status = 'erro';
+          linha.erro = err.message;
+        }
+
+        bulkResults.push(linha);
+        // pequena pausa entre CNPJs pra não estourar limite das APIs públicas
+        await new Promise(function (r) { setTimeout(r, 350); });
+      }
+
+      progressFill.style.width = '100%';
+      progressText.textContent = 'Concluído — ' + cnpjs.length + ' CNPJ(s) processado(s).';
+
+      renderBulkTable(bulkResults);
+      uploadCard.style.display = 'none';
+      resultsCard.style.display = 'block';
+    }
+
+    function renderBulkTable(results) {
+      const tbody = document.getElementById('bulkTableBody');
+      tbody.innerHTML = results.map(function (r) {
+        const statusClass = r.status === 'ok' ? 'bulk-status-ok' : 'bulk-status-erro';
+        const statusLabel = r.status === 'ok' ? 'OK' : ('Erro: ' + (r.erro || ''));
+        return (
+          '<tr>' +
+            '<td>' + (r.cnpj || '') + '</td>' +
+            '<td>' + (r.razaoSocial || '—') + '</td>' +
+            '<td>' + (r.situacao || '—') + '</td>' +
+            '<td>' + (r.notaGoogle || r.notaGoogle === 0 ? r.notaGoogle : '—') + '</td>' +
+            '<td>' + (r.telefone || r.telefoneGoogle || '—') + '</td>' +
+            '<td>' + ([r.municipio, r.uf].filter(Boolean).join(' - ') || '—') + '</td>' +
+            '<td class="' + statusClass + '">' + statusLabel + '</td>' +
+          '</tr>'
+        );
+      }).join('');
+    }
+
+    document.getElementById('bulkDownloadBtn').addEventListener('click', function () {
+      if (!bulkResults.length) return;
+      const ws = XLSX.utils.json_to_sheet(bulkResults);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Resultados ÍCARO');
+      XLSX.writeFile(wb, 'icaro-busca-em-massa.xlsx');
+    });
+
+    document.getElementById('bulkNewSearchBtn').addEventListener('click', function () {
+      resultsCard.style.display = 'none';
+      uploadCard.style.display = 'block';
+      progressWrap.style.display = 'none';
+      progressFill.style.width = '0%';
+      fileInput.value = '';
+      fileNameEl.textContent = '';
+      bulkSelectedFile = null;
+      bulkResults = [];
+      startBtn.disabled = true;
     });
   })();
 

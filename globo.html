@@ -671,6 +671,7 @@
               <span class="access-badge" id="accessEntrada"></span>
               <span class="access-badge" id="accessEstacionamento"></span>
               <span class="access-badge" id="accessBanheiro"></span>
+              <span class="access-badge" id="accessAssentos"></span>
             </div>
 
             <div class="result-grid google-transport-grid" id="googleTransportGrid" style="display:none;">
@@ -1643,6 +1644,7 @@ void main() {
         { id: 'accessEntrada', label: 'Entrada acessível', value: acessibilidade && acessibilidade.entradaAcessivel },
         { id: 'accessEstacionamento', label: 'Estacionamento acessível', value: acessibilidade && acessibilidade.estacionamentoAcessivel },
         { id: 'accessBanheiro', label: 'Banheiro acessível', value: acessibilidade && acessibilidade.banheiroAcessivel },
+        { id: 'accessAssentos', label: 'Assentos acessíveis', value: acessibilidade && acessibilidade.assentosAcessiveis },
       ];
 
       let anyShown = false;
